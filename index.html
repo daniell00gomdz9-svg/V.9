@@ -1,305 +1,343 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>V.9</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
-    <link rel="apple-touch-icon" href="icon.png">
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-gradient: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 100%);
-            --accent-color: #3388ff;
-            --text-color: #ffffff;
-            --accent-gradient: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
-            /* Ajuste de alturas para dar más espacio a los botones */
-            --top-height: 140px;
-            --data-height: 50px;
-            --map-height: 100px; /* Reducido un poco el mapa */
-            --control-height: auto;
-        }
+<meta charset="UTF-8">
+<title>Tablero Tesla Style</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-        * { box-sizing: border-box; }
+<style>
+body{
+  margin:0;
+  background:#0b0b12;
+  font-family:Arial,sans-serif;
+  color:white;
+  text-align:center;
+}
 
-        body {
-            margin: 0;
-            background: var(--bg-gradient);
-            font-family: 'Roboto', sans-serif;
-            color: var(--text-color);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            touch-action: none;
-            padding-top: env(safe-area-inset-top);
-        }
+/* SELECTOR VEHÍCULO + INPUTS */
+select,input{
+  padding:10px;
+  border-radius:10px;
+  background:#111;
+  color:white;
+  border:none;
+  margin:5px;
+  width:150px;
+}
 
-        /* --- DASHBOARD TOP --- */
-        .dashboard-top {
-            height: var(--top-height);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid rgba(51, 136, 255, 0.3);
-            background: rgba(0, 0, 0, 0.2);
-            gap: 10px;
-            flex-shrink: 0;
-            padding: 0 10px;
-        }
+/* VELOCÍMETRO */
+.gauge-wrapper{
+  position:relative;
+  width:280px;
+  height:280px;
+}
 
-        .side-container {
-            width: 20px;
-            height: 80px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--accent-color);
-            border-radius: 5px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(51, 136, 255, 0.3);
-        }
+.gauge{
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  background:#111;
+  border:4px solid #222;
+  position:relative;
+  box-shadow:0 0 20px #4b0082;
+}
 
-        .side-bar {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 0%;
-            background: var(--accent-gradient);
-            transition: height 0.2s;
-        }
+.needle{
+  position:absolute;
+  width:4px;
+  height:120px;
+  background:white;
+  top:20px;
+  left:50%;
+  transform-origin:bottom center;
+  transform:rotate(-135deg);
+  transition:transform 0.2s linear;
+}
 
-        .gauge-container {
-            position: relative;
-            width: 110px;
-            height: 110px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid var(--accent-color);
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(51,136,255,0.1) 0%, rgba(0,0,0,0.5) 100%);
-            box-shadow: 0 0 15px rgba(51, 136, 255, 0.4);
-        }
+.zone-red{
+  position:absolute;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  background:conic-gradient(
+    transparent 0deg 220deg,
+    rgba(255,0,0,0.3) 220deg 270deg,
+    transparent 270deg 360deg
+  );
+}
 
-        #bigSpeed {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 38px;
-            margin: 0;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+.digital-speed{
+  font-size:70px;
+  font-weight:bold;
+  margin-top:10px;
+  transition:0.3s;
+}
 
-        .unit-label {
-            font-size: 10px;
-            color: #fff;
-            letter-spacing: 2px;
-            font-family: 'Orbitron', sans-serif;
-        }
+.km-label{
+  font-size:18px;
+  color:#aaa;
+}
 
-        /* --- PANEL DATOS --- */
-        .data-panel-container {
-            width: 100%;
-            height: var(--data-height);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid var(--accent-color);
-            flex-shrink: 0;
-        }
+/* TACÓMETRO DIGITAL (barra) */
+.rpm-container{
+  width:80%;
+  height:20px;
+  background:#222;
+  margin:15px auto;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 0 12px #8a2be2;
+}
 
-        .data-item { text-align: center; }
-        .data-label { font-size: 9px; color: #aab; text-transform: uppercase; letter-spacing: 1px; }
-        .data-value { font-family: 'Orbitron', sans-serif; font-size: 14px; color: #fff; }
+.rpm-fill{
+  height:100%;
+  width:0%;
+  background:#00ff88;
+  transition:width 0.2s, background 0.3s;
+}
 
-        /* --- MAPA --- */
-        .map-container { 
-            height: var(--map-height); 
-            flex-shrink: 0;
-            z-index: 1;
-            background: #000;
-            border-bottom: 1px solid var(--accent-color);
-        }
-        #map { height: 100%; width: 100%; }
+/* GASOLINA/BATERÍA VERTICAL */
+.fuel-vertical-container{
+  width:30px;
+  height:200px;
+  background:#222;
+  border-radius:15px;
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  position:relative;
+}
 
-        /* --- HISTORIAL --- */
-        .history-panel {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.4);
-            overflow-y: auto;
-            padding: 5px;
-            -webkit-overflow-scrolling: touch;
-        }
+.fuel-vertical{
+  width:100%;
+  height:100%;
+  background:#00ff88;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  transition:height 0.3s;
+  box-shadow:0 0 12px #00ff88;
+}
 
-        .history-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .history-table td { color: #fff; padding: 4px; border-bottom: 1px solid rgba(51, 136, 255, 0.2); }
+#fuelEmoji{
+  margin-bottom:4px;
+  filter: drop-shadow(0 0 6px #00ff88);
+  font-size:16px;
+}
 
-        /* --- CONTROL PANEL --- */
-        .control-panel {
-            background: rgba(0, 0, 0, 0.8); /* Fondo un poco más oscuro */
-            border-top: 2px solid var(--accent-color);
-            padding: 5px; /* Reducido padding superior */
-            flex-shrink: 0;
-            padding-bottom: calc(5px + env(safe-area-inset-bottom));
-        }
+/* BOTONES */
+button{
+  padding:12px 25px;
+  margin:5px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(45deg,#7c3aed,#ff00ff);
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
 
-        .grid-panel { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4px; margin-bottom: 5px; }
-        .input-group { display: flex; flex-direction: column; }
-        input, select {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--accent-color);
-            color: #fff;
-            padding: 6px; /* Padding reducido */
-            border-radius: 4px;
-            font-size: 12px;
-            -webkit-appearance: none;
-            width: 100%;
-        }
-        label { color: var(--accent-color); font-size: 7px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1px; }
+button:hover{
+  box-shadow:0 0 12px #ff00ff;
+}
 
-        .mode-selector { display: flex; justify-content: space-around; gap: 4px; margin-bottom: 5px; }
-        .mode-btn {
-            color: #fff;
-            font-size: 10px;
-            font-family: 'Orbitron', sans-serif;
-            cursor: pointer;
-            padding: 6px; /* Padding reducido */
-            border-radius: 4px;
-            border: 1px solid rgba(51, 136, 255, 0.3);
-            text-align: center;
-            flex: 1;
-        }
-        .mode-btn.active {
-            background: var(--accent-gradient);
-            box-shadow: 0 0 10px rgba(51, 136, 255, 0.5);
-            border-color: #fff;
-        }
+/* MAPA */
+#map{
+  height:300px;
+  margin-top:15px;
+  border-radius:15px;
+}
 
-        /* --- FILA DE BOTONES AJUSTADA --- */
-        .button-row { display: flex; gap: 5px; margin-top: 2px; }
-        .btn-action {
-            flex: 1;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 10px; /* Padding reducido */
-            border-radius: 4px;
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            font-size: 12px;
-        }
-        .btn-save {
-            background: var(--accent-gradient);
-            border: none;
-        }
-    </style>
+/* TIMER */
+#timer{
+  font-size:22px;
+  margin-top:10px;
+}
+</style>
 </head>
 <body>
 
-<div class="dashboard-top">
-    <div class="side-container">
-        <div class="side-bar" id="fuelBar"></div>
-    </div>
-    
-    <div class="gauge-container">
-        <h1 id="bigSpeed">0</h1>
-        <div class="unit-label">KM/H</div>
-    </div>
+<h2>Tablero Tesla Style</h2>
 
-    <div class="side-container">
-        <div class="side-bar" id="rpmBar"></div>
+<select id="vehicleSelect" onchange="changeVehicle()">
+  <option value="35">Moto Vento Ryder 190</option>
+  <option value="18">Chevrolet Spark</option>
+</select>
+
+<!-- Velocímetro + Gasolina vertical lado a lado -->
+<div style="display:flex; justify-content:center; align-items:flex-start; gap:40px; margin-top:20px;">
+  <!-- Velocímetro -->
+  <div class="gauge-wrapper">
+    <div class="gauge" id="speedGauge"></div>
+    <div class="zone-red"></div>
+    <div id="speedNeedle" class="needle"></div>
+    <div id="digitalSpeed" class="digital-speed" style="margin-top:10px;">0</div>
+    <div class="km-label">km/h</div>
+  </div>
+
+  <!-- Gasolina vertical -->
+  <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+    <div class="fuel-vertical-container">
+      <div id="fuelVerticalLine" class="fuel-vertical">
+        <span id="fuelEmoji">⛽️</span>
+      </div>
     </div>
+    <div id="fuelText">Gasolina: 100% | Autonomía: 0 km | Costo: $0.00</div>
+    <input type="number" id="litersInput" placeholder="Litros">
+    <input type="number" id="priceInput" placeholder="Precio por litro" step="0.01">
+    <button onclick="loadFuel()">Aceptar</button>
+  </div>
 </div>
 
-<div class="data-panel-container">
-    <div class="data-item">
-        <span class="data-label">Distancia</span>
-        <div class="data-value" id="distVal">0.00</div>
-    </div>
-    <div class="data-item">
-        <span class="data-label">Autonomía</span>
-        <div class="data-value" id="rangeVal">0</div>
-    </div>
-    <div class="data-item">
-        <span class="data-label">Tiempo</span>
-        <div class="data-value" id="timeVal">00:00</div>
-    </div>
+<!-- Tacómetro -->
+<div class="rpm-container">
+  <div id="rpmFill" class="rpm-fill"></div>
+</div>
+<div id="digitalRPM" class="digital-speed">0</div>
+<div class="km-label">x1000 RPM</div>
+
+<!-- Alerta velocidad -->
+<input type="number" id="speedLimitInput" placeholder="Velocidad límite km/h">
+
+<div id="timer">00:00:00</div>
+
+<div>
+  <button onclick="startTracking()">Iniciar</button>
+  <button onclick="pauseTracking()">Pausa</button>
+  <button onclick="stopTracking()">Finalizar</button>
+  <button onclick="saveTrip()">Guardar Viaje</button>
 </div>
 
-<div class="map-container">
-    <div id="map"></div>
-</div>
+<div id="map"></div>
 
-<div class="history-panel">
-    <table class="history-table">
-        <tbody id="historyBody"></tbody>
-    </table>
-</div>
-
-<div class="control-panel">
-    <div class="grid-panel">
-        <div class="input-group">
-            <label>VEHÍCULO</label>
-            <select id="vehicleSelect" onchange="calculateRemainingKM()">
-                <option value="Spark">Spark</option>
-                <option value="Vento">Vento</option>
-                <option value="Ryder">Ryder 190</option>
-            </select>
-        </div>
-        <div class="input-group">
-            <label>CARGA ($)</label>
-            <input type="number" id="moneyInput" inputmode="decimal" oninput="calculateRemainingKM()">
-        </div>
-        <div class="input-group">
-            <label>GAS ($/L)</label>
-            <input type="number" id="priceInput" inputmode="decimal" value="23.50" oninput="calculateRemainingKM()">
-        </div>
-    </div>
-
-    <div class="mode-selector">
-        <div class="mode-btn" onclick="setMode('taxi', this)">TAXI</div>
-        <div class="mode-btn active" onclick="setMode('drive', this)">DRIVE</div>
-        <div class="mode-btn" onclick="setMode('sport', this)">SPORT</div>
-    </div>
-
-    <div class="button-row">
-        <button class="btn-action" id="btnPlay" onclick="toggleDrive()">INICIAR</button>
-        <button class="btn-action btn-save" onclick="saveTripData()">GUARDAR</button>
-    </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-    // --- LÓGICA JAVASCRIPT ---
-    let ltsRestantes = 0, ltsIniciales = 0, rendActual = 15;
-    let activo = false, wId, lastPos = null;
-    let totalDist = 0, seconds = 0;
-    let timerInterval;
+/* VARIABLES */
+let map=L.map('map').setView([19.4,-99.1],15);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd'}).addTo(map);
 
-    // Registrar Service Worker para PWA
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+let routeCoordinates=[];
+let pathLine=L.polyline(routeCoordinates,{color:'#a855f7',weight:6}).addTo(map);
+
+let watchId,isRunning=false;
+let speed=0,lastPosition=null,totalDistance=0;
+let fuelLiters=5,totalLiters=5,efficiency=35;
+let secondsElapsed=0,timerInterval;
+
+/* VEHÍCULO */
+function changeVehicle(){efficiency=parseFloat(document.getElementById("vehicleSelect").value);}
+
+/* CARGA GASOLINA */
+function loadFuel(){
+  fuelLiters=parseFloat(document.getElementById("litersInput").value);
+  totalLiters=fuelLiters;
+  let pricePerLiter=parseFloat(document.getElementById("priceInput").value)||0;
+  let totalCost=fuelLiters*pricePerLiter;
+  updateFuel(totalCost);
+}
+
+function updateFuel(totalCost=0){
+  let percent=(fuelLiters/totalLiters)*100;
+  if(percent<0) percent=0;
+
+  let fuelLine=document.getElementById("fuelVerticalLine");
+  fuelLine.style.height=percent+"%";
+  fuelLine.style.background=percent>50?"#00ff88":percent>20?"#ffcc00":"#ff0033";
+
+  document.getElementById("fuelText").innerText=
+    "Gasolina: "+fuelLiters.toFixed(1)+" L | Autonomía: "+(fuelLiters*efficiency).toFixed(1)+" km | Costo: $"+totalCost.toFixed(2);
+}
+
+/* GPS */
+function startTracking(){
+  if(isRunning) return;
+  isRunning=true;
+  startTimer();
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    let lat=pos.coords.latitude;
+    let lng=pos.coords.longitude;
+    let newPoint=[lat,lng];
+
+    if(lastPosition){
+      let d=map.distance(lastPosition,newPoint)/1000;
+      totalDistance+=d;
+      fuelLiters-=d/efficiency;
+      updateFuel();
     }
 
-    window.onload = function() { loadHistory(); };
+    lastPosition=newPoint;
+    routeCoordinates.push(newPoint);
+    pathLine.setLatLngs(routeCoordinates);
+    map.setView(newPoint);
 
-    function setMode(mode, element) {
-        document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-        console.log("Modo cambiado a: " + mode);
-    }
+    speed=pos.coords.speed?pos.coords.speed*3.6:0;
+    updateDashboard();
+  },()=>alert("Activa GPS"),{enableHighAccuracy:true});
+}
 
-    // Inicialización del mapa con estilos optimizados para móvil
-    const map = L.map('map', {
-        zoomControl: false, 
-        attributionControl: false,
-        dragging: false, 
-        zoomAnimation: false,
-        boxZoom: false,
-        doubleClickZoom: false,
+/* Pausa / Finalizar */
+function pauseTracking(){ navigator.geolocation.clearWatch(watchId); isRunning=false; stopTimer(); }
+function stopTracking(){ pauseTracking(); lastPosition=null; }
+
+/* DASHBOARD */
+function updateDashboard(){
+  // Velocímetro
+  let deg=-135+(speed/200)*270;
+  document.getElementById("speedNeedle").style.transform="rotate("+deg+"deg)";
+  let digitalSpeed=document.getElementById("digitalSpeed");
+  digitalSpeed.innerText=speed.toFixed(0);
+
+  // Tacómetro
+  let rpm=speed*40;
+  document.getElementById("digitalRPM").innerText=(rpm/1000).toFixed(1);
+  let fill=document.getElementById("rpmFill");
+  let rpmPercent=Math.min((rpm/8000)*100,100);
+  fill.style.width=rpmPercent+"%";
+  fill.style.background=rpmPercent<60?"#00ff88":rpmPercent<85?"#ffcc00":"#ff0033";
+
+  // Alerta velocidad
+  checkSpeedAlert();
+}
+
+function checkSpeedAlert(){
+  let limit=parseFloat(document.getElementById("speedLimitInput").value);
+  let digital=document.getElementById("digitalSpeed");
+  if(limit && speed>limit){
+    digital.style.color=digital.style.color==="red"?"#ff0033":"white";
+    if(!window.beepAudio){window.beepAudio=new Audio('https://www.soundjay.com/button/beep-07.wav');}
+    if(!window.beepPlaying){window.beepAudio.play(); window.beepPlaying=true;
+      setTimeout(()=>{window.beepPlaying=false;},1000);}
+  } else {
+    digital.style.color=speed<80?"#00ff88":speed<140?"#ffcc00":"#ff0033";
+  }
+}
+
+/* TIMER */
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    secondsElapsed++;
+    let h=Math.floor(secondsElapsed/3600);
+    let m=Math.floor((secondsElapsed%3600)/60);
+    let s=secondsElapsed%60;
+    document.getElementById("timer").innerText=
+      (h<10?"0":"")+h+":"+
+      (m<10?"0":"")+m+":"+
+      (s<10?"0":"")+s;
+  },1000);
+}
+function stopTimer(){ clearInterval(timerInterval); }
+
+/* GUARDAR VIAJE */
+function saveTrip(){
+  let vehicle=document.getElementById("vehicleSelect")
+    .options[document.getElementById("vehicleSelect").selectedIndex].text;
+  let trip={date:new Date().toLocaleString(), vehicle:vehicle, distance:totalDistance.toFixed(2)+" km", time:document.getElementById("timer").innerText};
+  let trips=JSON.parse(localStorage.getItem("trips")||"[]");
+  trips.push(trip);
+  localStorage.setItem("trips",JSON.stringify(trips));
+  alert("Viaje guardado ✅");
+}
+</script>
+</body>
+</html>
