@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>V.9</title>
+<title>Tablero Tesla Style</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
@@ -31,6 +31,7 @@ select,input{
   position:relative;
   width:280px;
   height:280px;
+  margin:20px auto;
 }
 
 .gauge{
@@ -97,33 +98,31 @@ select,input{
   transition:width 0.2s, background 0.3s;
 }
 
-/* GASOLINA/BATERÍA VERTICAL */
-.fuel-vertical-container{
-  width:30px;
-  height:200px;
+/* GASOLINA/BATERÍA */
+.fuel-line-container{
+  width:80%;
+  height:6px;
   background:#222;
-  border-radius:15px;
+  margin:15px auto;
+  border-radius:20px;
   overflow:hidden;
-  display:flex;
-  justify-content:center;
-  position:relative;
 }
 
-.fuel-vertical{
-  width:100%;
+.fuel-line{
   height:100%;
+  width:100%;
   background:#00ff88;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-  transition:height 0.3s;
+  transition:0.3s;
   box-shadow:0 0 12px #00ff88;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  padding-right:8px;
+  font-size:16px;
 }
 
 #fuelEmoji{
-  margin-bottom:4px;
   filter: drop-shadow(0 0 6px #00ff88);
-  font-size:16px;
 }
 
 /* BOTONES */
@@ -165,37 +164,32 @@ button:hover{
   <option value="18">Chevrolet Spark</option>
 </select>
 
-<!-- Velocímetro + Gasolina vertical lado a lado -->
-<div style="display:flex; justify-content:center; align-items:flex-start; gap:40px; margin-top:20px;">
-  <!-- Velocímetro -->
-  <div class="gauge-wrapper">
-    <div class="gauge" id="speedGauge"></div>
-    <div class="zone-red"></div>
-    <div id="speedNeedle" class="needle"></div>
-    <div id="digitalSpeed" class="digital-speed" style="margin-top:10px;">0</div>
-    <div class="km-label">km/h</div>
-  </div>
-
-  <!-- Gasolina vertical -->
-  <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-    <div class="fuel-vertical-container">
-      <div id="fuelVerticalLine" class="fuel-vertical">
-        <span id="fuelEmoji">⛽️</span>
-      </div>
-    </div>
-    <div id="fuelText">Gasolina: 100% | Autonomía: 0 km | Costo: $0.00</div>
-    <input type="number" id="litersInput" placeholder="Litros">
-    <input type="number" id="priceInput" placeholder="Precio por litro" step="0.01">
-    <button onclick="loadFuel()">Aceptar</button>
-  </div>
+<!-- Velocímetro -->
+<div class="gauge-wrapper">
+  <div class="gauge" id="speedGauge"></div>
+  <div class="zone-red"></div>
+  <div id="speedNeedle" class="needle"></div>
 </div>
+<div id="digitalSpeed" class="digital-speed">0</div>
+<div class="km-label">km/h</div>
 
-<!-- Tacómetro -->
+<!-- Tacómetro digital -->
 <div class="rpm-container">
   <div id="rpmFill" class="rpm-fill"></div>
 </div>
 <div id="digitalRPM" class="digital-speed">0</div>
 <div class="km-label">x1000 RPM</div>
+
+<!-- Gasolina / precio -->
+<div class="fuel-line-container">
+  <div id="fuelLine" class="fuel-line">
+    <span id="fuelEmoji">⛽️</span>
+  </div>
+</div>
+<div id="fuelText">Gasolina: 100%</div>
+
+<input type="number" id="litersInput" placeholder="Litros">
+<input type="number" id="priceInput" placeholder="Precio por litro" step="0.01">
 
 <!-- Alerta velocidad -->
 <input type="number" id="speedLimitInput" placeholder="Velocidad límite km/h">
@@ -232,7 +226,7 @@ function changeVehicle(){efficiency=parseFloat(document.getElementById("vehicleS
 function loadFuel(){
   fuelLiters=parseFloat(document.getElementById("litersInput").value);
   totalLiters=fuelLiters;
-  let pricePerLiter=parseFloat(document.getElementById("priceInput").value)||0;
+  let pricePerLiter=parseFloat(document.getElementById("priceInput").value) || 0;
   let totalCost=fuelLiters*pricePerLiter;
   updateFuel(totalCost);
 }
@@ -240,13 +234,12 @@ function loadFuel(){
 function updateFuel(totalCost=0){
   let percent=(fuelLiters/totalLiters)*100;
   if(percent<0) percent=0;
-
-  let fuelLine=document.getElementById("fuelVerticalLine");
-  fuelLine.style.height=percent+"%";
-  fuelLine.style.background=percent>50?"#00ff88":percent>20?"#ffcc00":"#ff0033";
-
+  let line=document.getElementById("fuelLine");
+  line.style.width=percent+"%";
+  line.style.background=percent>50?"#00ff88":percent>20?"#ffcc00":"#ff0033";
   document.getElementById("fuelText").innerText=
-    "Gasolina: "+fuelLiters.toFixed(1)+" L | Autonomía: "+(fuelLiters*efficiency).toFixed(1)+" km | Costo: $"+totalCost.toFixed(2);
+    "Gasolina: "+percent.toFixed(0)+"% | Autonomía: "+
+    (fuelLiters*efficiency).toFixed(1)+" km | Costo: $"+totalCost.toFixed(2);
 }
 
 /* GPS */
