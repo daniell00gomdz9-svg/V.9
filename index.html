@@ -3,229 +3,209 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Auto</title>
-
+<title>Dashboard Tesla Style</title>
+<link rel="manifest" href="manifest.json">
 <style>
-body{
-  margin:0;
-  background:#000;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-}
-
-.dashboard{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:30px;
-  margin-top:40px;
-}
-
-#batteryContainer{
-  width:40px;
-  height:220px;
-  border:3px solid white;
-  border-radius:10px;
-  position:relative;
-  background:#111;
-}
-
-#batteryLevel{
-  position:absolute;
-  bottom:0;
-  width:100%;
-  height:100%;
-  background:limegreen;
-  border-radius:7px;
-  transition:0.4s;
-}
-
-canvas{
-  background:#111;
-  border-radius:50%;
-}
-
-#kmCounter{
-  margin-top:20px;
-  font-size:20px;
-}
-
-#fuelButton{
-  position:fixed;
-  bottom:30px;
-  right:20px;
-  font-size:24px;
-  background:#222;
-  color:white;
-  border:none;
-  padding:15px;
-  border-radius:50%;
-  cursor:pointer;
-}
-
-#fuelPanel{
-  position:fixed;
-  bottom:110px;
-  right:20px;
-  width:250px;
-  background:#111;
-  padding:15px;
-  border-radius:12px;
-  box-shadow:0 0 20px rgba(0,0,0,0.6);
-}
-
-.hidden{
-  display:none;
-}
-
-#fuelPanel input{
-  width:100%;
-  margin-bottom:10px;
-  padding:6px;
-  border:none;
-  border-radius:5px;
-}
+body{margin:0;background:#000;color:white;font-family:sans-serif;text-align:center}
+.container{padding:20px;display:flex;flex-direction:column;align-items:center}
+.canvasContainer{display:flex;justify-content:center;align-items:center;gap:10px;}
+canvas{background:#111;border-radius:50%;}
+.info{margin-top:10px;font-size:18px}
+.autonomia{margin-top:5px;font-size:18px;color:#00ff88}
+.alerta{font-size:16px;margin-top:5px;height:20px}
+button, select, input{background:#222;color:white;border:none;padding:8px 12px;margin:5px;border-radius:20px;font-size:14px}
+button:active{transform:scale(0.95)}
+.modo-activo{box-shadow:0 0 10px currentColor}
 </style>
 </head>
-
 <body>
 
-<h2>Velocímetro Digital</h2>
-
-<div class="dashboard">
-
-  <div id="batteryContainer">
-    <div id="batteryLevel"></div>
+<div class="container">
+  <div class="canvasContainer">
+    <canvas id="speedometer" width="300" height="300"></canvas>
+    <canvas id="rpmMeter" width="150" height="150"></canvas>
   </div>
 
-  <canvas id="speedometer" width="250" height="250"></canvas>
+  <div class="info" id="distance">Distancia: 0.00 km</div>
+  <div class="autonomia" id="autonomia">Autonomía: 0 km</div>
+  <div class="alerta" id="alerta"></div>
 
-</div>
+  <div>
+    <button id="btnStart">Iniciar</button>
+    <button id="btnPause">Pausa</button>
+    <button id="btnReset">Reiniciar</button>
+  </div>
 
-<div id="kmCounter">Distancia: 0.00 km</div>
+  <div>
+    <button class="modo" data-modo="taxi">Taxi</button>
+    <button class="modo" data-modo="sport">Sport</button>
+    <button class="modo" data-modo="drive">Drive</button>
+  </div>
 
-<button id="fuelButton">⛽</button>
+  <hr style="margin:20px 0;border:1px solid #222;">
 
-<div id="fuelPanel" class="hidden">
-  <h3>Combustible</h3>
+  <h4>Calcular Autonomía</h4>
+  <select id="vehiculo">
+    <option value="18">Spark</option>
+    <option value="35">Vento Ryder 190</option>
+    <option value="16">Vento</option>
+    <option value="17">Tsuru</option>
+    <option value="22">Platina</option>
+    <option value="16">Chevy</option>
+    <option value="7">Suburban</option>
+    <option value="14">Urban</option>
+    <option value="9">Mustang</option>
+    <option value="20">Atos</option>
+  </select>
 
-  <label>Litros</label>
-  <input type="number" id="litros" placeholder="Ej: 40">
-
-  <label>Precio por litro</label>
-  <input type="number" id="precioLitro" placeholder="Ej: 1.50">
-
-  <button onclick="calcularGasolina()">Calcular</button>
-
-  <div id="resultadoFuel"></div>
+  <input type="number" id="litros" placeholder="Litros" min="0">
+  <button onclick="calcularAutonomia()">Cargar Gasolina</button>
 </div>
 
 <script>
+/* Variables globales */
 const canvas = document.getElementById("speedometer");
 const ctx = canvas.getContext("2d");
+const rpmCanvas = document.getElementById("rpmMeter");
+const rpmCtx = rpmCanvas.getContext("2d");
 
-let speed = 0;
-let totalDistance = 0;
-let lastPosition = null;
+let watchId=null,totalDistance=0,lastPosition=null,lastTime=null,speed=0,rpm=0;
+let consumoPorLitro=15,autonomiaRestante=0,colorModo="white";
 
-let capacidadTanque = 50;
-let litrosActuales = 40;
+const distanceTxt=document.getElementById("distance");
+const autonomiaTxt=document.getElementById("autonomia");
+const alertaTxt=document.getElementById("alerta");
+const audioAlerta = new Audio("alerta.mp3"); // Coloca mp3 de alerta
 
+/* Velocímetro principal */
 function drawSpeedometer(speed){
-  ctx.clearRect(0,0,250,250);
-
-  ctx.beginPath();
-  ctx.arc(125,125,100,0,2*Math.PI);
-  ctx.strokeStyle="white";
-  ctx.lineWidth=4;
-  ctx.stroke();
-
-  let angle = (speed/180)*Math.PI;
-
-  ctx.beginPath();
-  ctx.moveTo(125,125);
-  ctx.lineTo(
-    125 + 80*Math.cos(Math.PI - angle),
-    125 - 80*Math.sin(Math.PI - angle)
-  );
-  ctx.strokeStyle="purple";
-  ctx.lineWidth=5;
-  ctx.stroke();
-
-  ctx.font="20px Arial";
-  ctx.fillStyle="white";
-  ctx.fillText(speed.toFixed(0)+" km/h",90,200);
+  ctx.clearRect(0,0,300,300);
+  const cx=150,cy=150,radius=120;
+  ctx.beginPath();ctx.arc(cx,cy,radius,0,2*Math.PI);ctx.fillStyle="#0a0a0a";ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,radius-10,Math.PI,2*Math.PI);ctx.strokeStyle="#222";ctx.lineWidth=15;ctx.stroke();
+  const maxSpeed=180;const angle=(speed/maxSpeed)*Math.PI;
+  const grad=ctx.createLinearGradient(0,0,300,0);
+  grad.addColorStop(0,"#00ffcc");grad.addColorStop(0.5,colorModo);grad.addColorStop(1,"#ff0033");
+  ctx.beginPath();ctx.arc(cx,cy,radius-10,Math.PI,Math.PI+angle);ctx.strokeStyle=grad;ctx.lineWidth=15;ctx.lineCap="round";ctx.stroke();
+  ctx.fillStyle=colorModo;ctx.font="bold 70px Arial";ctx.textAlign="center";ctx.fillText(speed.toFixed(0),cx,cy+10);
+  ctx.font="18px Arial";ctx.fillStyle="#aaa";ctx.fillText("km/h",cx,cy+40);
 }
 
-function calcularDistancia(pos1,pos2){
+/* Mini tacómetro */
+function drawRPM(rpm){
+  rpmCtx.clearRect(0,0,150,150);
+  const cx=75,cy=75,radius=65;
+  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius,0,2*Math.PI); rpmCtx.fillStyle="#111"; rpmCtx.fill();
+  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius-5,Math.PI,2*Math.PI); rpmCtx.strokeStyle="#222"; rpmCtx.lineWidth=10; rpmCtx.stroke();
+  const maxRPM=8000; const angle=(rpm/maxRPM)*Math.PI;
+  let color = rpm<4000 ? "lime" : rpm<6000 ? "orange" : "red";
+  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius-5,Math.PI,Math.PI+angle); rpmCtx.strokeStyle=color; rpmCtx.lineWidth=10; rpmCtx.lineCap="round"; rpmCtx.stroke();
+  rpmCtx.fillStyle=color; rpmCtx.font="bold 18px Arial"; rpmCtx.textAlign="center"; rpmCtx.fillText(rpm.toFixed(0)+" RPM",cx,cy+5);
+}
+
+/* Actualizar RPM según velocidad */
+function actualizarRPM(){
+  rpm = Math.min(speed*50,8000); // Simulación: 1 km/h = 50 RPM
+  drawRPM(rpm);
+}
+
+/* Funciones GPS */
+function iniciar(){
+  if(watchId!==null) return;
+  if(!navigator.geolocation){alert("GPS no soportado"); return;}
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    const coords=pos.coords;
+    const currentTime=new Date().getTime();
+    if(lastPosition && coords.speed===null){
+      const dist=calcularDistancia(lastPosition,coords);
+      const dt=(currentTime-lastTime)/1000;
+      speed = dt>0 ? (dist/dt)*3600 : 0;
+      totalDistance+=dist;
+      autonomiaRestante-=dist;if(autonomiaRestante<0) autonomiaRestante=0;
+    } else {
+      speed=coords.speed?coords.speed*3.6:0;
+      if(lastPosition){
+        const dist=calcularDistancia(lastPosition,coords);
+        totalDistance+=dist;
+        autonomiaRestante-=dist;if(autonomiaRestante<0) autonomiaRestante=0;
+      }
+    }
+    lastPosition=coords; lastTime=currentTime;
+    checkVelocidad(speed);
+    actualizarUI();
+  }, err=>{alert("Activa permisos de ubicación");}, {enableHighAccuracy:true});
+}
+
+function pausar(){if(watchId!==null){navigator.geolocation.clearWatch(watchId); watchId=null;}}
+function reiniciar(){totalDistance=0;lastPosition=null;lastTime=null;speed=0;autonomiaRestante=0;actualizarUI();}
+
+/* Autonomía */
+function calcularAutonomia(){
+  const litros=parseFloat(document.getElementById("litros").value);
+  consumoPorLitro=parseFloat(document.getElementById("vehiculo").value);
+  if(isNaN(litros)||litros<=0) return;
+  autonomiaRestante=litros*consumoPorLitro;
+  actualizarUI();
+}
+
+/* Actualizar UI */
+function actualizarUI(){
+  drawSpeedometer(speed);
+  actualizarRPM();
+  distanceTxt.innerText="Distancia: "+totalDistance.toFixed(2)+" km";
+  autonomiaTxt.innerText="Autonomía: "+autonomiaRestante.toFixed(0)+" km";
+}
+
+/* Calcular distancia GPS */
+function calcularDistancia(p1,p2){
   const R=6371;
-  const dLat=(pos2.latitude-pos1.latitude)*Math.PI/180;
-  const dLon=(pos2.longitude-pos1.longitude)*Math.PI/180;
-  const a=
-    Math.sin(dLat/2)*Math.sin(dLat/2)+
-    Math.cos(pos1.latitude*Math.PI/180)*
-    Math.cos(pos2.latitude*Math.PI/180)*
-    Math.sin(dLon/2)*Math.sin(dLon/2);
+  const dLat=(p2.latitude-p1.latitude)*Math.PI/180;
+  const dLon=(p2.longitude-p1.longitude)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(p1.latitude*Math.PI/180)*Math.cos(p2.latitude*Math.PI/180)*Math.sin(dLon/2)**2;
   const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   return R*c;
 }
 
-navigator.geolocation.watchPosition(position=>{
-  const coords = position.coords;
-  speed = coords.speed ? coords.speed*3.6 : 0;
-  drawSpeedometer(speed);
+/* Botones */
+document.getElementById("btnStart").addEventListener("click", iniciar);
+document.getElementById("btnPause").addEventListener("click", pausar);
+document.getElementById("btnReset").addEventListener("click", reiniciar);
 
-  if(lastPosition){
-    totalDistance += calcularDistancia(lastPosition,coords);
-    document.getElementById("kmCounter").innerText =
-      "Distancia: "+ totalDistance.toFixed(2) +" km";
-  }
-
-  lastPosition = coords;
-
-},{enableHighAccuracy:true});
-
-drawSpeedometer(0);
-
-document.getElementById("fuelButton").addEventListener("click",()=>{
-  document.getElementById("fuelPanel").classList.toggle("hidden");
+/* Modos */
+document.querySelectorAll(".modo").forEach(btn=>{
+  btn.addEventListener("click", function(){
+    document.querySelectorAll(".modo").forEach(b=>b.classList.remove("modo-activo"));
+    const modo=this.dataset.modo;
+    if(modo==="taxi") colorModo="gold";
+    if(modo==="sport") colorModo="royalblue";
+    if(modo==="drive") colorModo="red";
+    this.classList.add("modo-activo");
+    drawSpeedometer(speed);
+  });
 });
 
-function calcularGasolina(){
-  const litros = parseFloat(document.getElementById("litros").value);
-  const precio = parseFloat(document.getElementById("precioLitro").value);
-
-  if(isNaN(litros)||isNaN(precio)) return;
-
-  litrosActuales = litros;
-
-  const total = litros*precio;
-  const autonomia = litros*15;
-
-  document.getElementById("resultadoFuel").innerHTML=
-    "Total: $"+ total.toFixed(2)+"<br>"+
-    "Autonomía estimada: "+ autonomia.toFixed(0)+" km";
-
-  actualizarGasolina(litrosActuales);
+/* Alertas de velocidad */
+function checkVelocidad(speed){
+  if(speed>=120){alertaTxt.innerText="🚨 SUPERASTE 120 km/h!"; audioAlerta.play();}
+  else if(speed>=100) alertaTxt.innerText="⚠️ SUPERASTE 100 km/h!";
+  else if(speed>=70) alertaTxt.innerText="⚠️ SUPERASTE 70 km/h!";
+  else if(autonomiaRestante<=50) alertaTxt.innerText="⚠️ AUTONOMÍA BAJA";
+  else alertaTxt.innerText="";
 }
 
-function actualizarGasolina(litros){
-  let porcentaje = (litros/capacidadTanque)*100;
-  document.getElementById("batteryLevel").style.height =
-    porcentaje+"%";
+/* Loop inicial */
+drawSpeedometer(0);
+drawRPM(0);
 
-  if(porcentaje>50){
-    document.getElementById("batteryLevel").style.background="limegreen";
-  }else if(porcentaje>20){
-    document.getElementById("batteryLevel").style.background="orange";
-  }else{
-    document.getElementById("batteryLevel").style.background="red";
-  }
+/* Service Worker */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js')
+    .then(reg=>console.log("SW registrado",reg))
+    .catch(err=>console.log("Error SW:",err));
 }
 
-actualizarGasolina(litrosActuales);
+/* Actualizar RPM constantemente */
+setInterval(actualizarRPM,500);
 </script>
-
 </body>
 </html>
