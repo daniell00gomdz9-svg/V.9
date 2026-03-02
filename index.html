@@ -5,7 +5,6 @@
 <title>Tablero Tesla Style</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7c3aed">
 
@@ -19,14 +18,14 @@ body{
   color:white;
   text-align:center;
 }
-select,input{
-  padding:10px;
-  border-radius:10px;
-  background:#111;
-  color:white;
-  border:none;
+button{
+  padding:12px 20px;
   margin:5px;
-  width:150px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(45deg,#7c3aed,#ff00ff);
+  color:white;
+  font-weight:bold;
 }
 .gauge-wrapper{
   position:relative;
@@ -53,121 +52,34 @@ select,input{
   transform:rotate(-135deg);
   transition:transform 0.2s linear;
 }
-.zone-red{
-  position:absolute;
-  width:100%;
-  height:100%;
-  border-radius:50%;
-  background:conic-gradient(
-    transparent 0deg 220deg,
-    rgba(255,0,0,0.3) 220deg 270deg,
-    transparent 270deg 360deg
-  );
-}
 .digital-speed{
   font-size:70px;
   font-weight:bold;
-  margin-top:10px;
 }
-.km-label{
-  font-size:18px;
-  color:#aaa;
-}
-.rpm-container{
-  width:80%;
-  height:20px;
-  background:#222;
-  margin:15px auto;
-  border-radius:10px;
-  overflow:hidden;
-}
-.rpm-fill{
-  height:100%;
-  width:0%;
-  background:#00ff88;
-  transition:width 0.2s, background 0.3s;
-}
-.fuel-line-container{
-  width:80%;
-  height:6px;
-  background:#222;
-  margin:15px auto;
-  border-radius:20px;
-  overflow:hidden;
-}
-.fuel-line{
-  height:100%;
-  width:100%;
-  background:#00ff88;
-  transition:0.3s;
-}
-button{
-  padding:12px 25px;
-  margin:5px;
-  border:none;
-  border-radius:12px;
-  background:linear-gradient(45deg,#7c3aed,#ff00ff);
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-button:hover{
-  box-shadow:0 0 12px #ff00ff;
-}
-#map{
-  height:300px;
-  margin-top:15px;
-  border-radius:15px;
-}
-#timer{
-  font-size:22px;
-  margin-top:10px;
-}
+#timer{font-size:20px;margin-top:10px;}
+#kmCounter{font-size:16px;color:#aaa;}
+#map{height:250px;margin-top:15px;border-radius:15px;}
 </style>
 </head>
 <body>
 
 <h2>Tablero Tesla Style</h2>
 
-<select id="vehicleSelect" onchange="changeVehicle(); loadFuel();">
-  <option value="35">Moto Vento Ryder 190</option>
-  <option value="18">Chevrolet Spark</option>
-</select>
+<button id="installBtn" style="display:none;">Descargar App</button>
+
+<div id="timer">00:00:00</div>
+<div id="kmCounter">Distancia: 0.00 km</div>
 
 <div class="gauge-wrapper">
   <div class="gauge"></div>
-  <div class="zone-red"></div>
   <div id="speedNeedle" class="needle"></div>
 </div>
 
 <div id="digitalSpeed" class="digital-speed">0</div>
-<div class="km-label">km/h</div>
+<div>km/h</div>
 
-<div class="rpm-container">
-  <div id="rpmFill" class="rpm-fill"></div>
-</div>
-
-<div id="digitalRPM" class="digital-speed">0</div>
-<div class="km-label">x1000 RPM</div>
-
-<div class="fuel-line-container">
-  <div id="fuelLine" class="fuel-line"></div>
-</div>
-
-<div id="fuelText">Gasolina: 0% | Autonomía: 0 km | Costo: $0.00</div>
-
-<input type="number" id="litersInput" placeholder="Litros" oninput="loadFuel()">
-<input type="number" id="priceInput" placeholder="Precio por litro" step="0.01" oninput="loadFuel()">
-<input type="number" id="speedLimitInput" placeholder="Velocidad límite km/h">
-
-<div id="timer">00:00:00</div>
-
-<div>
-  <button onclick="startTracking()">Iniciar</button>
-  <button onclick="pauseTracking()">Pausa</button>
-  <button onclick="stopTracking()">Finalizar</button>
-  <button onclick="saveTrip()">Guardar Viaje</button>
-</div>
+<button onclick="startTracking()">Iniciar</button>
+<button onclick="stopTracking()">Finalizar</button>
 
 <div id="map"></div>
 
@@ -177,130 +89,104 @@ button:hover{
 let map=L.map('map').setView([19.4,-99.1],15);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd'}).addTo(map);
 
-let routeCoordinates=[];
-let pathLine=L.polyline(routeCoordinates,{color:'#a855f7',weight:6}).addTo(map);
+let route=[];
+let poly=L.polyline(route,{color:'#a855f7',weight:6}).addTo(map);
 
-let watchId,isRunning=false;
-let speed=0,lastPosition=null,totalDistance=0;
-let fuelLiters=0,totalLiters=0,efficiency=35;
-let secondsElapsed=0,timerInterval;
+let watchId;
+let speed=0,lastPos=null,totalDistance=0;
+let seconds=0,timerInterval;
+let wakeLock=null;
+let deferredPrompt;
 
-function changeVehicle(){
-  efficiency=parseFloat(document.getElementById("vehicleSelect").value);
+// INSTALAR APP
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById("installBtn").style.display="inline-block";
+});
+document.getElementById("installBtn").addEventListener("click",async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt=null;
+  document.getElementById("installBtn").style.display="none";
+});
+
+// SERVICE WORKER
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("service-worker.js");
 }
 
-function loadFuel(){
-  fuelLiters=parseFloat(document.getElementById("litersInput").value)||0;
-  totalLiters=fuelLiters;
-
-  let pricePerLiter=parseFloat(document.getElementById("priceInput").value)||0;
-  let totalCost=fuelLiters*pricePerLiter;
-  let autonomia=fuelLiters*efficiency;
-
-  document.getElementById("fuelText").innerText=
-  "Gasolina: 100% | Autonomía: "+autonomia.toFixed(1)+" km | Costo: $"+totalCost.toFixed(2);
-
-  updateFuel();
-}
-
-function updateFuel(){
-  let percent=(fuelLiters/totalLiters)*100;
-  if(!isFinite(percent)) percent=0;
-  let line=document.getElementById("fuelLine");
-  line.style.width=percent+"%";
-  line.style.background=percent>50?"#00ff88":percent>20?"#ffcc00":"#ff0033";
-}
-
-function startTracking(){
-  if(isRunning) return;
-  isRunning=true;
-  startTimer();
-
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    let newPoint=[pos.coords.latitude,pos.coords.longitude];
-
-    if(lastPosition){
-      let d=map.distance(lastPosition,newPoint)/1000;
-      totalDistance+=d;
-      fuelLiters-=d/efficiency;
-      updateFuel();
+// WAKE LOCK
+async function activarPantalla(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock=await navigator.wakeLock.request('screen');
     }
-
-    lastPosition=newPoint;
-    routeCoordinates.push(newPoint);
-    pathLine.setLatLngs(routeCoordinates);
-    map.setView(newPoint);
-
-    speed=pos.coords.speed?pos.coords.speed*3.6:0;
-    updateDashboard();
-
-  },()=>alert("Activa GPS"),{enableHighAccuracy:true});
+  }catch(e){console.log(e);}
 }
-
-function pauseTracking(){
-  navigator.geolocation.clearWatch(watchId);
-  isRunning=false;
-  stopTimer();
+async function desactivarPantalla(){
+  if(wakeLock){await wakeLock.release();wakeLock=null;}
 }
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && wakeLock){activarPantalla();}
+});
 
-function stopTracking(){
-  pauseTracking();
-  lastPosition=null;
-}
-
-function updateDashboard(){
-  let deg=-135+(speed/200)*270;
-  document.getElementById("speedNeedle").style.transform="rotate("+deg+"deg)";
-  document.getElementById("digitalSpeed").innerText=speed.toFixed(0);
-
-  let rpm=speed*40;
-  document.getElementById("digitalRPM").innerText=(rpm/1000).toFixed(1);
-
-  let fill=document.getElementById("rpmFill");
-  let rpmPercent=Math.min((rpm/8000)*100,100);
-  fill.style.width=rpmPercent+"%";
-}
-
+// TIMER
 function startTimer(){
   timerInterval=setInterval(()=>{
-    secondsElapsed++;
-    let h=Math.floor(secondsElapsed/3600);
-    let m=Math.floor((secondsElapsed%3600)/60);
-    let s=secondsElapsed%60;
+    seconds++;
+    let h=Math.floor(seconds/3600);
+    let m=Math.floor((seconds%3600)/60);
+    let s=seconds%60;
     document.getElementById("timer").innerText=
       (h<10?"0":"")+h+":"+
       (m<10?"0":"")+m+":"+
       (s<10?"0":"")+s;
   },1000);
 }
+function stopTimer(){clearInterval(timerInterval);}
 
-function stopTimer(){ clearInterval(timerInterval); }
-
-function saveTrip(){
-  let vehicle=document.getElementById("vehicleSelect").selectedOptions[0].text;
-  let trip={
-    date:new Date().toLocaleString(),
-    vehicle:vehicle,
-    distance:totalDistance.toFixed(2)+" km",
-    time:document.getElementById("timer").innerText
-  };
-  let trips=JSON.parse(localStorage.getItem("trips")||"[]");
-  trips.push(trip);
-  localStorage.setItem("trips",JSON.stringify(trips));
-  alert("Viaje guardado ✅");
+// TRACKING
+function startTracking(){
+  activarPantalla();
+  startTimer();
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    let point=[pos.coords.latitude,pos.coords.longitude];
+    if(lastPos){
+      let d=map.distance(lastPos,point)/1000;
+      totalDistance+=d;
+      document.getElementById("kmCounter").innerText=
+        "Distancia: "+totalDistance.toFixed(2)+" km";
+    }
+    lastPos=point;
+    route.push(point);
+    poly.setLatLngs(route);
+    map.setView(point);
+    speed=pos.coords.speed?pos.coords.speed*3.6:0;
+    updateDashboard();
+  },()=>alert("Activa GPS"),{enableHighAccuracy:true});
 }
 
-/* SERVICE WORKER ANDROID CACHE */
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("service-worker.js")
-    .then(()=>console.log("SW registrado"))
-    .catch(err=>console.log("Error SW",err));
-  });
+function stopTracking(){
+  navigator.geolocation.clearWatch(watchId);
+  stopTimer();
+  desactivarPantalla();
+  lastPos=null;
+}
 
-  navigator.serviceWorker.addEventListener("controllerchange",()=>{
-    window.location.reload();
-  });
+function updateDashboard(){
+  let deg=-135+(speed/200)*270;
+  let needle=document.getElementById("speedNeedle");
+  needle.style.transform="rotate("+deg+"deg)";
+  document.getElementById("digitalSpeed").innerText=speed.toFixed(0);
+
+  if(speed>5){
+    needle.style.background="#a855f7";
+    needle.style.boxShadow="0 0 15px #a855f7";
+  }else{
+    needle.style.background="white";
+    needle.style.boxShadow="none";
+  }
 }
 </script>
 
