@@ -17,10 +17,10 @@
             --accent-color: #3388ff;
             --text-color: #ffffff;
             --accent-gradient: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
-            /* Uso de variables para alturas consistentes */
+            /* Ajuste de alturas para dar más espacio a los botones */
             --top-height: 140px;
             --data-height: 50px;
-            --map-height: 120px;
+            --map-height: 100px; /* Reducido un poco el mapa */
             --control-height: auto;
         }
 
@@ -36,7 +36,6 @@
             flex-direction: column;
             overflow: hidden;
             touch-action: none;
-            /* Soporte para notch en iPhones */
             padding-top: env(safe-area-inset-top);
         }
 
@@ -139,39 +138,38 @@
         }
 
         .history-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .history-table td { color: #fff; padding: 6px 4px; border-bottom: 1px solid rgba(51, 136, 255, 0.2); }
+        .history-table td { color: #fff; padding: 4px; border-bottom: 1px solid rgba(51, 136, 255, 0.2); }
 
         /* --- CONTROL PANEL --- */
         .control-panel {
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.8); /* Fondo un poco más oscuro */
             border-top: 2px solid var(--accent-color);
-            padding: 8px;
+            padding: 5px; /* Reducido padding superior */
             flex-shrink: 0;
-            /* Soporte para barra inferior de iOS */
-            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+            padding-bottom: calc(5px + env(safe-area-inset-bottom));
         }
 
-        .grid-panel { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+        .grid-panel { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4px; margin-bottom: 5px; }
         .input-group { display: flex; flex-direction: column; }
         input, select {
             background: rgba(255,255,255,0.05);
             border: 1px solid var(--accent-color);
             color: #fff;
-            padding: 8px;
+            padding: 6px; /* Padding reducido */
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
             -webkit-appearance: none;
             width: 100%;
         }
-        label { color: var(--accent-color); font-size: 7px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+        label { color: var(--accent-color); font-size: 7px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1px; }
 
-        .mode-selector { display: flex; justify-content: space-around; gap: 5px; margin-bottom: 8px; }
+        .mode-selector { display: flex; justify-content: space-around; gap: 4px; margin-bottom: 5px; }
         .mode-btn {
             color: #fff;
-            font-size: 11px;
+            font-size: 10px;
             font-family: 'Orbitron', sans-serif;
             cursor: pointer;
-            padding: 10px;
+            padding: 6px; /* Padding reducido */
             border-radius: 4px;
             border: 1px solid rgba(51, 136, 255, 0.3);
             text-align: center;
@@ -183,13 +181,14 @@
             border-color: #fff;
         }
 
-        .button-row { display: flex; gap: 8px; }
+        /* --- FILA DE BOTONES AJUSTADA --- */
+        .button-row { display: flex; gap: 5px; margin-top: 2px; }
         .btn-action {
             flex: 1;
             background: rgba(255,255,255,0.1);
             border: 1px solid #fff;
             color: #fff;
-            padding: 12px;
+            padding: 10px; /* Padding reducido */
             border-radius: 4px;
             font-family: 'Orbitron', sans-serif;
             text-transform: uppercase;
@@ -304,90 +303,3 @@
         zoomAnimation: false,
         boxZoom: false,
         doubleClickZoom: false,
-        scrollWheelZoom: false
-    }).setView([19.4326, -99.1332], 13);
-    
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(map);
-
-    function calculateRemainingKM() {
-        let money = parseFloat(document.getElementById('moneyInput').value) || 0;
-        let price = parseFloat(document.getElementById('priceInput').value) || 1;
-        let vehicle = document.getElementById('vehicleSelect').value;
-        if(vehicle === 'Ryder') rendActual = 30;
-        else if(vehicle === 'Vento') rendActual = 15;
-        else rendActual = 12;
-        ltsRestantes = money / price;
-        ltsIniciales = ltsRestantes;
-        document.getElementById('rangeVal').innerText = Math.round(ltsRestantes * rendActual);
-        updateFuelBar();
-    }
-
-    function updateFuelBar() {
-        const bar = document.getElementById('fuelBar');
-        let percentage = (ltsIniciales === 0 || !ltsIniciales) ? 0 : (ltsRestantes / ltsIniciales) * 100;
-        bar.style.height = Math.min(percentage, 100) + "%";
-    }
-
-    function toggleDrive() {
-        const btn = document.getElementById('btnPlay');
-        if(activo) {
-            navigator.geolocation.clearWatch(wId);
-            activo = false;
-            btn.innerText = "INICIAR";
-            clearInterval(timerInterval);
-        } else {
-            activo = true;
-            totalDist = 0;
-            btn.innerText = "PAUSAR";
-            timerInterval = setInterval(() => { seconds++; updateTimerDisplay(); }, 1000);
-            
-            wId = navigator.geolocation.watchPosition(p => {
-                let v = p.coords.speed ? p.coords.speed * 3.6 : 0;
-                document.getElementById('bigSpeed').innerText = Math.round(v);
-                let rpm = (v / 140) * 100;
-                document.getElementById('rpmBar').style.height = Math.min(rpm, 100) + "%";
-                
-                if(lastPos) {
-                    let d = map.distance(lastPos, [p.coords.latitude, p.coords.longitude]) / 1000;
-                    totalDist += d;
-                    ltsRestantes -= (d / rendActual);
-                    document.getElementById('distVal').innerText = totalDist.toFixed(2);
-                    document.getElementById('rangeVal').innerText = Math.max(0, Math.round(ltsRestantes * rendActual));
-                    updateFuelBar();
-                }
-                lastPos = [p.coords.latitude, p.coords.longitude];
-                map.panTo(lastPos);
-            }, null, {enableHighAccuracy: true});
-        }
-    }
-
-    function updateTimerDisplay() {
-        let mins = Math.floor(seconds / 60);
-        let secs = seconds % 60;
-        document.getElementById('timeVal').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-    }
-
-    function saveTripData() {
-        let vehicle = document.getElementById('vehicleSelect').value;
-        let trip = { vehicle: vehicle, dist: totalDist.toFixed(2) };
-        let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
-        history.push(trip);
-        localStorage.setItem('tripHistory', JSON.stringify(history));
-        loadHistory();
-        alert("Viaje guardado");
-    }
-
-    function loadHistory() {
-        let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
-        let tbody = document.getElementById('historyBody');
-        tbody.innerHTML = "";
-        history.reverse().slice(0, 3).forEach(trip => {
-            tbody.innerHTML += `<tr><td>${trip.vehicle}</td><td>${trip.dist} km</td></tr>`;
-        });
-    }
-</script>
-</body>
-</html>
