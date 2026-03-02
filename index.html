@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>V.9</title>
+    <title>Voyager Pro</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="icon.png">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
@@ -266,22 +267,26 @@
     let totalDist = 0, seconds = 0;
     let timerInterval;
 
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+
     window.onload = function() { loadHistory(); };
 
     function setMode(mode, element) {
         document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
         element.classList.add('active');
+        console.log("Modo cambiado a: " + mode);
     }
 
-    // --- CORRECCIÓN MAPA ---
     const map = L.map('map', {
         zoomControl: false, 
         attributionControl: false,
-        dragging: false, // Desactiva arrastre para permitir scroll
+        dragging: false, 
         zoomAnimation: false
     }).setView([19.4326, -99.1332], 13);
     
-    // URL segura para tiles
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd',
         maxZoom: 19
@@ -317,7 +322,7 @@
             activo = true;
             totalDist = 0;
             btn.innerText = "PAUSAR";
-            timerInterval = setInterval(() => { seconds++; }, 1000);
+            timerInterval = setInterval(() => { seconds++; updateTimerDisplay(); }, 1000);
             
             wId = navigator.geolocation.watchPosition(p => {
                 let v = p.coords.speed ? p.coords.speed * 3.6 : 0;
@@ -339,6 +344,12 @@
         }
     }
 
+    function updateTimerDisplay() {
+        let mins = Math.floor(seconds / 60);
+        let secs = seconds % 60;
+        document.getElementById('timeVal').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    }
+
     function saveTripData() {
         let vehicle = document.getElementById('vehicleSelect').value;
         let trip = { vehicle: vehicle, dist: totalDist.toFixed(2) };
@@ -346,6 +357,7 @@
         history.push(trip);
         localStorage.setItem('tripHistory', JSON.stringify(history));
         loadHistory();
+        alert("Viaje guardado");
     }
 
     function loadHistory() {
