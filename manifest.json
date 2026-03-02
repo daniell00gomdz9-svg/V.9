@@ -1,15 +1,22 @@
-{
-  "name": "V.9",
-  "short_name": "V.9",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
+const CACHE_NAME = 'V.9';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.png'
+];
+
+// Instalar y cachear recursos
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+  );
+});
+
+// Servir recursos desde el caché
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(res => res || fetch(e.request))
+  );
+});
+
