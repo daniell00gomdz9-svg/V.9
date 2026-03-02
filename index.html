@@ -2,124 +2,217 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akron Voyager Pro PWA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>V.9</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --main-accent: #3388ff;
-            --bg-color: #000000;
+            --bg-gradient: linear-gradient(135deg, #0a0a12 0%, #1a1a2e 100%);
+            --accent-color: #3388ff;
             --text-color: #ffffff;
-            --score-color: #4cd964;
+            --accent-gradient: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
         }
 
         body {
             margin: 0;
-            background-color: var(--bg-color);
-            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            font-family: 'Roboto', sans-serif;
             color: var(--text-color);
             height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
-            transition: all 0.5s;
+            overflow: hidden;
+            touch-action: none;
         }
 
-        /* --- ESTILOS DE MODOS (MANTIENEN FUNCIONALIDAD) --- */
-        body.mode-drive { --main-accent: #ffffff; --bg-color: #1a1a1a; }
-        body.mode-drive .gauge-container { border: 8px solid #444; border-radius: 50%; }
-        body.mode-drive #bigSpeed { font-family: 'Times New Roman', serif; font-size: 70px; }
+        /* --- DASHBOARD TOP --- */
+        .dashboard-top {
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid rgba(51, 136, 255, 0.3);
+            background: rgba(0, 0, 0, 0.2);
+            gap: 15px;
+            flex-shrink: 0;
+        }
 
-        body.mode-sport { --main-accent: #ff3b30; --bg-color: #000000; }
-        body.mode-sport .gauge-container { border: 4px solid var(--main-accent); border-radius: 20px; }
-        body.mode-sport #bigSpeed { font-family: 'Orbitron', sans-serif; font-size: 80px; color: var(--main-accent); }
+        .side-container {
+            width: 25px;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--accent-color);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(51, 136, 255, 0.3);
+        }
 
-        body.mode-taxi { --main-accent: #00ffcc; --bg-color: #050505; }
-        body.mode-taxi .gauge-container { border: none; background: #111; border-radius: 10px; }
-        body.mode-taxi #bigSpeed { font-family: 'Orbitron', sans-serif; font-size: 90px; color: var(--main-accent); }
+        .side-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0%;
+            background: var(--accent-gradient);
+            transition: height 0.2s;
+        }
 
-        /* --- ESTRUCTURA GENERAL --- */
-        .dashboard-top { height: 250px; display: flex; flex-direction: row; align-items: center; justify-content: center; position: relative; border-bottom: 2px solid #333; gap: 15px; background-color: var(--bg-color); }
-        .side-container { width: 40px; height: 150px; background: #111; border: 2px solid #333; border-radius: 5px; position: relative; overflow: hidden; }
-        .side-bar { position: absolute; bottom: 0; width: 100%; height: 0%; transition: height 0.3s; }
-        .gauge-container { position: relative; width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; transition: all 0.5s; }
-        .needle { position: absolute; width: 4px; height: 75px; background: var(--main-accent); bottom: 50%; left: calc(50% - 2px); transform-origin: bottom center; border-radius: 10px; transition: transform 0.2s; z-index: 5; }
-        body.mode-taxi .needle { display: none; }
-        #bigSpeed { margin: 0; transition: all 0.3s; }
-        .unit-label { font-size: 12px; color: #888; position: absolute; bottom: 15px; }
+        .gauge-container {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--accent-color);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(51,136,255,0.1) 0%, rgba(0,0,0,0.5) 100%);
+            box-shadow: 0 0 15px rgba(51, 136, 255, 0.4);
+        }
 
-        /* --- PANEL DE DATOS CORREGIDO --- */
-        .data-panel-container { width: 100%; display: flex; justify-content: space-around; background: #000000; padding: 10px; border-top: 2px solid #333; box-sizing: border-box; }
-        .data-item { text-align: center; flex: 1; }
-        .data-label { font-size: 9px; color: #888; text-transform: uppercase; display:block; }
-        .data-value { font-size: 16px; font-weight: 900; color: #fff; }
-        
-        #scoreVal { color: var(--score-color); font-size: 20px; text-shadow: 0 0 10px var(--score-color); }
+        #bigSpeed {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 45px;
+            margin: 0;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-        .map-container { height: 150px; position: relative; border-bottom: 2px solid #333; }
+        .unit-label {
+            font-size: 10px;
+            color: #fff;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* --- PANEL DATOS --- */
+        .data-panel-container {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--accent-color);
+            flex-shrink: 0;
+        }
+
+        .data-item { text-align: center; }
+        .data-label { font-size: 9px; color: #aab; text-transform: uppercase; letter-spacing: 1px; }
+        .data-value { font-family: 'Orbitron', sans-serif; font-size: 16px; color: #fff; }
+
+        /* --- MAPA --- */
+        .map-container { 
+            height: 120px; 
+            flex-shrink: 0;
+            z-index: 1;
+            background: #000;
+            border-bottom: 1px solid var(--accent-color);
+        }
         #map { height: 100%; width: 100%; }
 
-        .history-panel { flex: 1; background: #111; overflow-y: auto; padding: 10px; }
-        .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .history-table th { color: #888; text-align: left; padding: 5px; }
-        .history-table td { color: #fff; padding: 5px; border-bottom: 1px solid #333; }
+        /* --- HISTORIAL --- */
+        .history-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            overflow-y: scroll;
+            padding: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
 
-        .control-panel { width: 100%; background-color: #000000; border-top: 1px solid #333; }
-        .grid-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; padding: 5px; }
-        .input-group { display: flex; flex-direction: column; gap: 2px; }
-        input, select { background: #111; border: 1px solid #333; color: #fff; padding: 4px; border-radius: 6px; font-size: 11px;}
-        label { color: #888; font-size: 9px; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .history-table td { color: #fff; padding: 4px; border-bottom: 1px solid rgba(51, 136, 255, 0.2); }
 
-        .mode-selector { display: flex; justify-content: space-around; padding: 5px; background: #111; }
-        .mode-btn { color: #888; font-size: 11px; font-weight: 700; cursor: pointer; padding: 6px 12px; border-radius: 10px; }
-        .mode-btn.active { color: white; background-color: #333; }
+        /* --- CONTROL PANEL --- */
+        .control-panel {
+            background: rgba(0, 0, 0, 0.6);
+            border-top: 2px solid var(--accent-color);
+            padding: 5px;
+            flex-shrink: 0;
+        }
 
-        .controls-bottom { padding: 5px; }
-        .button-row { display: flex; gap: 10px; width: 100%; }
-        .btn-action { flex: 1; background: #111; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 12px; font-weight: 900; }
-        .btn-active { background: #fff; color: #000; }
-        .btn-save { background: #4cd964; color: #000; }
+        .grid-panel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+        .input-group { display: flex; flex-direction: column; }
+        input, select {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--accent-color);
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            -webkit-appearance: none;
+        }
+        label { color: var(--accent-color); font-size: 7px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .mode-selector { display: flex; justify-content: space-around; padding: 5px; }
+        .mode-btn {
+            color: #fff;
+            font-size: 10px;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            padding: 8px 15px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+        }
+        .mode-btn.active {
+            background: var(--accent-gradient);
+            box-shadow: 0 0 10px rgba(51, 136, 255, 0.5);
+            border-color: #fff;
+        }
+
+        .button-row { display: flex; gap: 5px; padding: 5px 0; }
+        .btn-action {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #fff;
+            color: #fff;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .btn-save {
+            background: var(--accent-gradient);
+            border: none;
+        }
     </style>
 </head>
-<body class="mode-drive">
+<body>
 
 <div class="dashboard-top">
     <div class="side-container">
-        <div class="side-bar" id="fuelBar" style="background: #4cd964;"></div>
+        <div class="side-bar" id="fuelBar"></div>
     </div>
     
-    <div class="gauge-container" id="gaugeBody">
-        <div id="needle" class="needle"></div>
+    <div class="gauge-container">
         <h1 id="bigSpeed">0</h1>
         <div class="unit-label">KM/H</div>
     </div>
 
     <div class="side-container">
-        <div class="side-bar" id="rpmBar" style="background: var(--main-accent);"></div>
+        <div class="side-bar" id="rpmBar"></div>
     </div>
 </div>
 
 <div class="data-panel-container">
     <div class="data-item">
-        <span class="data-label">Eco-Score</span>
-        <span class="data-value" id="scoreVal">100</span>
-    </div>
-    <div class="data-item">
         <span class="data-label">Distancia</span>
-        <span class="data-value" id="distVal">0.00</span>
+        <div class="data-value" id="distVal">0.00</div>
     </div>
     <div class="data-item">
         <span class="data-label">Autonomía</span>
-        <span class="data-value" id="rangeVal">0</span>
+        <div class="data-value" id="rangeVal">0</div>
     </div>
     <div class="data-item">
         <span class="data-label">Tiempo</span>
-        <span class="data-value" id="timeVal">00:00</span>
+        <div class="data-value" id="timeVal">00:00</div>
     </div>
 </div>
 
@@ -128,9 +221,7 @@
 </div>
 
 <div class="history-panel">
-    <h3 style="margin-top:0; font-size:14px; color:#aaa;">Historial</h3>
     <table class="history-table">
-        <thead><tr><th>Vehículo</th><th>Dist.</th><th>Score</th></tr></thead>
         <tbody id="historyBody"></tbody>
     </table>
 </div>
@@ -147,11 +238,11 @@
         </div>
         <div class="input-group">
             <label>CARGA ($)</label>
-            <input type="number" id="moneyInput" oninput="calculateRemainingKM()">
+            <input type="number" id="moneyInput" inputmode="decimal" oninput="calculateRemainingKM()">
         </div>
         <div class="input-group">
             <label>GAS ($/L)</label>
-            <input type="number" id="priceInput" value="23.50" oninput="calculateRemainingKM()">
+            <input type="number" id="priceInput" inputmode="decimal" value="23.50" oninput="calculateRemainingKM()">
         </div>
     </div>
 
@@ -161,178 +252,110 @@
         <div class="mode-btn" onclick="setMode('sport', this)">SPORT</div>
     </div>
 
-    <div class="controls-bottom">
-        <div class="button-row">
-            <button class="btn-action" id="btnPlay" onclick="toggleDrive()">INICIAR</button>
-            <button class="btn-action btn-save" onclick="saveTripData()">GUARDAR</button>
-        </div>
+    <div class="button-row">
+        <button class="btn-action" id="btnPlay" onclick="toggleDrive()">INICIAR</button>
+        <button class="btn-action btn-save" onclick="saveTripData()">GUARDAR</button>
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-let ltsRestantes = 0, ltsIniciales = 0, rendActual = 15;
-let activo = false, wId, lastPos = null;
-let totalDist = 0, seconds = 0;
-let timerInterval;
-let currentScore = 100;
-let lastSpeed = 0;
-let rangeVal = 0;
+    // --- LÓGICA JAVASCRIPT ---
+    let ltsRestantes = 0, ltsIniciales = 0, rendActual = 15;
+    let activo = false, wId, lastPos = null;
+    let totalDist = 0, seconds = 0;
+    let timerInterval;
 
-window.onload = function() { loadHistory(); };
+    window.onload = function() { loadHistory(); };
 
-function setMode(mode, element) {
-    document.body.className = 'mode-' + mode;
-    document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
-    element.classList.add('active');
-}
+    function setMode(mode, element) {
+        document.querySelectorAll('.mode-btn').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+    }
 
-const map = L.map('map', {zoomControl: false, attributionControl: false}).setView([19.4326, -99.1332], 13);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-const ruta = L.polyline([], {color: '#3388ff', weight: 4, opacity: 0.7}).addTo(map);
-const userMarker = L.circleMarker([0, 0], {color: '#ffffff', fillColor: '#3388ff', fillOpacity: 1, radius: 6}).addTo(map);
-
-// --- LÓGICA DE CÁLCULO DE AUTONOMÍA ---
-function calculateRemainingKM() {
-    let money = parseFloat(document.getElementById('moneyInput').value) || 0;
-    let price = parseFloat(document.getElementById('priceInput').value) || 1;
-    let vehicle = document.getElementById('vehicleSelect').value;
+    // --- CORRECCIÓN MAPA ---
+    const map = L.map('map', {
+        zoomControl: false, 
+        attributionControl: false,
+        dragging: false, // Desactiva arrastre para permitir scroll
+        zoomAnimation: false
+    }).setView([19.4326, -99.1332], 13);
     
-    if(vehicle === 'Ryder') rendActual = 30;
-    else if(vehicle === 'Vento') rendActual = 15;
-    else rendActual = 12;
+    // URL segura para tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
 
-    ltsRestantes = money / price;
-    ltsIniciales = ltsRestantes;
-    rangeVal = ltsRestantes * rendActual;
-    
-    document.getElementById('rangeVal').innerText = Math.round(rangeVal);
-    updateFuelBar();
-}
+    function calculateRemainingKM() {
+        let money = parseFloat(document.getElementById('moneyInput').value) || 0;
+        let price = parseFloat(document.getElementById('priceInput').value) || 1;
+        let vehicle = document.getElementById('vehicleSelect').value;
+        if(vehicle === 'Ryder') rendActual = 30;
+        else if(vehicle === 'Vento') rendActual = 15;
+        else rendActual = 12;
+        ltsRestantes = money / price;
+        ltsIniciales = ltsRestantes;
+        document.getElementById('rangeVal').innerText = Math.round(ltsRestantes * rendActual);
+        updateFuelBar();
+    }
 
-function updateFuelBar() {
-    const bar = document.getElementById('fuelBar');
-    let percentage = (ltsIniciales === 0 || ltsIniciales === undefined) ? 0 : (ltsRestantes / ltsIniciales) * 100;
-    bar.style.height = Math.min(percentage, 100) + "%";
-}
+    function updateFuelBar() {
+        const bar = document.getElementById('fuelBar');
+        let percentage = (ltsIniciales === 0 || !ltsIniciales) ? 0 : (ltsRestantes / ltsIniciales) * 100;
+        bar.style.height = Math.min(percentage, 100) + "%";
+    }
 
-function updateTimer() {
-    seconds++;
-    let mins = Math.floor(seconds / 60);
-    let secs = seconds % 60;
-    document.getElementById('timeVal').innerText = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
-}
-
-// --- LÓGICA DE ECO-SCORE ---
-function updateScore(speed, accel) {
-    let penalty = 0;
-    if(speed > 110) penalty += 0.5;
-    if(accel > 20) penalty += 2;
-    if(accel < -20) penalty += 3;
-
-    currentScore = Math.max(0, currentScore - penalty);
-    document.getElementById('scoreVal').innerText = Math.round(currentScore);
-    
-    let color = '#4cd964';
-    if(currentScore < 80) color = '#ffcc00';
-    if(currentScore < 50) color = '#ff3b30';
-    document.getElementById('scoreVal').style.color = color;
-    document.getElementById('scoreVal').style.textShadow = `0 0 10px ${color}`;
-}
-
-function toggleDrive() {
-    const btn = document.getElementById('btnPlay');
-    if(activo) {
-        navigator.geolocation.clearWatch(wId);
-        activo = false;
-        btn.innerText = "INICIAR";
-        btn.classList.remove('btn-active');
-        clearInterval(timerInterval);
-    } else {
-        activo = true;
-        totalDist = 0;
-        currentScore = 100;
-        btn.innerText = "PAUSAR";
-        btn.classList.add('btn-active');
-        timerInterval = setInterval(updateTimer, 1000);
-        
-        wId = navigator.geolocation.watchPosition(p => {
-            let v = p.coords.speed ? p.coords.speed * 3.6 : 0;
-            let speedRound = Math.round(v);
-            let acceleration = speedRound - lastSpeed;
+    function toggleDrive() {
+        const btn = document.getElementById('btnPlay');
+        if(activo) {
+            navigator.geolocation.clearWatch(wId);
+            activo = false;
+            btn.innerText = "INICIAR";
+            clearInterval(timerInterval);
+        } else {
+            activo = true;
+            totalDist = 0;
+            btn.innerText = "PAUSAR";
+            timerInterval = setInterval(() => { seconds++; }, 1000);
             
-            document.getElementById('bigSpeed').innerText = speedRound;
-            updateScore(speedRound, acceleration);
-            lastSpeed = speedRound;
-            
-            let angle = -135 + (v * 1.5);
-            document.getElementById('needle').style.transform = `rotate(${Math.min(angle, 135)}deg)`;
-            
-            let rpm = (v / 140) * 100;
-            document.getElementById('rpmBar').style.height = Math.min(rpm, 100) + "%";
-            
-            let pos = [p.coords.latitude, p.coords.longitude];
-            userMarker.setLatLng(pos);
-            ruta.addLatLng(pos);
-            map.panTo(pos);
-            
-            if(lastPos) {
-                let d = map.distance(lastPos, pos) / 1000;
-                if(d > 0.001) {
+            wId = navigator.geolocation.watchPosition(p => {
+                let v = p.coords.speed ? p.coords.speed * 3.6 : 0;
+                document.getElementById('bigSpeed').innerText = Math.round(v);
+                let rpm = (v / 140) * 100;
+                document.getElementById('rpmBar').style.height = Math.min(rpm, 100) + "%";
+                
+                if(lastPos) {
+                    let d = map.distance(lastPos, [p.coords.latitude, p.coords.longitude]) / 1000;
                     totalDist += d;
                     ltsRestantes -= (d / rendActual);
-                    rangeVal = ltsRestantes * rendActual;
-                    
                     document.getElementById('distVal').innerText = totalDist.toFixed(2);
-                    document.getElementById('rangeVal').innerText = Math.max(0, Math.round(rangeVal));
+                    document.getElementById('rangeVal').innerText = Math.max(0, Math.round(ltsRestantes * rendActual));
                     updateFuelBar();
                 }
-            }
-            lastPos = pos;
-        }, null, {enableHighAccuracy: true});
+                lastPos = [p.coords.latitude, p.coords.longitude];
+                map.panTo(lastPos);
+            }, null, {enableHighAccuracy: true});
+        }
     }
-}
 
-function saveTripData() {
-    if(totalDist === 0) { alert("Realiza un viaje primero"); return; }
-    
-    let vehicle = document.getElementById('vehicleSelect').value;
-    let trip = {
-        vehicle: vehicle,
-        dist: totalDist.toFixed(2),
-        score: Math.round(currentScore)
-    };
-    
-    let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
-    history.push(trip);
-    localStorage.setItem('tripHistory', JSON.stringify(history));
-    
-    alert(`Viaje guardado. Eco-Score: ${trip.score}`);
-    loadHistory();
-    
-    // Reiniciar datos
-    if(activo) toggleDrive();
-    totalDist = 0; seconds = 0; currentScore = 100;
-    document.getElementById('timeVal').innerText = "00:00";
-    document.getElementById('distVal').innerText = "0.00";
-    document.getElementById('scoreVal').innerText = "100";
-    calculateRemainingKM();
-}
+    function saveTripData() {
+        let vehicle = document.getElementById('vehicleSelect').value;
+        let trip = { vehicle: vehicle, dist: totalDist.toFixed(2) };
+        let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
+        history.push(trip);
+        localStorage.setItem('tripHistory', JSON.stringify(history));
+        loadHistory();
+    }
 
-function loadHistory() {
-    let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
-    let tbody = document.getElementById('historyBody');
-    tbody.innerHTML = "";
-    
-    history.reverse().slice(0, 5).forEach(trip => {
-        let row = `<tr>
-            <td>${trip.vehicle}</td>
-            <td>${trip.dist} km</td>
-            <td style="color:${trip.score > 70 ? '#4cd964' : '#ff3b30'}">${trip.score}</td>
-        </tr>`;
-        tbody.innerHTML += row;
-    });
-}
+    function loadHistory() {
+        let history = JSON.parse(localStorage.getItem('tripHistory')) || [];
+        let tbody = document.getElementById('historyBody');
+        tbody.innerHTML = "";
+        history.reverse().slice(0, 3).forEach(trip => {
+            tbody.innerHTML += `<tr><td>${trip.vehicle}</td><td>${trip.dist} km</td></tr>`;
+        });
+    }
 </script>
 </body>
 </html>
