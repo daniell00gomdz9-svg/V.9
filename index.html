@@ -3,209 +3,204 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Tesla Style</title>
+<title>V.9</title>
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <style>
-body{margin:0;background:#000;color:white;font-family:sans-serif;text-align:center}
-.container{padding:20px;display:flex;flex-direction:column;align-items:center}
-.canvasContainer{display:flex;justify-content:center;align-items:center;gap:10px;}
-canvas{background:#111;border-radius:50%;}
-.info{margin-top:10px;font-size:18px}
-.autonomia{margin-top:5px;font-size:18px;color:#00ff88}
-.alerta{font-size:16px;margin-top:5px;height:20px}
-button, select, input{background:#222;color:white;border:none;padding:8px 12px;margin:5px;border-radius:20px;font-size:14px}
-button:active{transform:scale(0.95)}
-.modo-activo{box-shadow:0 0 10px currentColor}
+body{margin:0;background:#000;color:#00ff88;font-family:Arial, sans-serif;overflow:hidden;}
+.tab{display:none;height:100vh;padding:10px;box-sizing:border-box;}
+.active{display:block;}
+h1{text-align:center;margin:0;font-size:22px;}
+#speed{font-size:90px;text-align:center;margin-top:10px;}
+#rpm{width:120px;height:120px;margin:0 auto;}
+.smallData{text-align:center;font-size:16px;margin:3px 0;color:#aaa;}
+#map{height:70vh;margin-top:10px;}
+.bottomBar{position:fixed;bottom:0;width:100%;display:flex;background:#111;}
+.bottomBar button{flex:1;padding:15px;background:#111;border:none;color:#00ff88;font-size:16px;cursor:pointer;}
+.controls{text-align:center;margin-top:5px;}
+.controls button{margin:3px;padding:6px 12px;background:#00ff88;border:none;color:#000;font-weight:bold;cursor:pointer;}
+input,select{margin:3px;padding:4px;border-radius:4px;border:none;}
+canvas{display:block;margin:0 auto;}
 </style>
 </head>
 <body>
 
-<div class="container">
-  <div class="canvasContainer">
-    <canvas id="speedometer" width="300" height="300"></canvas>
-    <canvas id="rpmMeter" width="150" height="150"></canvas>
-  </div>
+<div id="dashboard" class="tab active">
+<h1>V.9 - Dashboard</h1>
 
-  <div class="info" id="distance">Distancia: 0.00 km</div>
-  <div class="autonomia" id="autonomia">Autonomía: 0 km</div>
-  <div class="alerta" id="alerta"></div>
+<div id="speed">0 km/h</div>
+<div class="smallData">Distancia: <span id="distance">0</span> km</div>
+<div class="smallData">Autonomía restante: <span id="range">0</span> km</div>
+<div class="smallData">Tiempo: <span id="time">0</span> s</div>
+<div class="smallData">Gasolina restante: <span id="fuelLeft">0</span> L</div>
 
-  <div>
-    <button id="btnStart">Iniciar</button>
-    <button id="btnPause">Pausa</button>
-    <button id="btnReset">Reiniciar</button>
-  </div>
-
-  <div>
-    <button class="modo" data-modo="taxi">Taxi</button>
-    <button class="modo" data-modo="sport">Sport</button>
-    <button class="modo" data-modo="drive">Drive</button>
-  </div>
-
-  <hr style="margin:20px 0;border:1px solid #222;">
-
-  <h4>Calcular Autonomía</h4>
-  <select id="vehiculo">
-    <option value="18">Spark</option>
-    <option value="35">Vento Ryder 190</option>
-    <option value="16">Vento</option>
-    <option value="17">Tsuru</option>
-    <option value="22">Platina</option>
-    <option value="16">Chevy</option>
-    <option value="7">Suburban</option>
-    <option value="14">Urban</option>
-    <option value="9">Mustang</option>
-    <option value="20">Atos</option>
-  </select>
-
-  <input type="number" id="litros" placeholder="Litros" min="0">
-  <button onclick="calcularAutonomia()">Cargar Gasolina</button>
+<div class="controls">
+<button onclick="startTracking()">Iniciar</button>
+<button onclick="pauseTracking()">Pausar</button>
+<button onclick="resetTracking()">Reiniciar</button>
 </div>
 
+<div style="text-align:center;">
+<select id="vehicle">
+<option value="17|38">Spark</option>
+<option value="16|55">Vento</option>
+<option value="15|45">Chevy</option>
+<option value="18|35">Matiz</option>
+<option value="7|100">Suburban</option>
+<option value="6|98">Tahoe</option>
+<option value="14|50">Tsuru</option>
+<option value="32|12">Ryder 190</option>
+<option value="30|14">Motocicleta 199</option>
+</select>
+</div>
+
+<div style="text-align:center;">
+<input type="number" id="litersAdded" placeholder="Litros cargados">
+<input type="number" id="fuelCost" placeholder="Costo por litro">
+<button onclick="addFuel()">Agregar gasolina</button>
+</div>
+<div class="smallData">Total gastado: $<span id="totalCost">0</span></div>
+</div>
+
+<div id="mapTab" class="tab">
+<h1>V.9 - Mapa</h1>
+<canvas id="mapSpeedometer" width="300" height="150"></canvas>
+<canvas id="mapRPM" width="120" height="120"></canvas>
+<div id="map" ></div>
+<div class="smallData">Distancia: <span id="distanceMap">0</span> km</div>
+<div class="smallData">Autonomía restante: <span id="rangeMap">0</span> km</div>
+</div>
+
+<div class="bottomBar">
+<button onclick="showTab('dashboard')">Panel</button>
+<button onclick="showTab('mapTab')">Mapa</button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-/* Variables globales */
-const canvas = document.getElementById("speedometer");
-const ctx = canvas.getContext("2d");
-const rpmCanvas = document.getElementById("rpmMeter");
-const rpmCtx = rpmCanvas.getContext("2d");
+let watchId=null,startTime=0,elapsed=0,timerInterval=null;
+let distance=0,lastPosition=null,fuel=0,totalCost=0,kmPerLiter=17;
+let tankCapacity=38;
 
-let watchId=null,totalDistance=0,lastPosition=null,lastTime=null,speed=0,rpm=0;
-let consumoPorLitro=15,autonomiaRestante=0,colorModo="white";
+let map = L.map('map').setView([19.4326, -99.1332], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let polyline = L.polyline([], {color:'#00ff88'}).addTo(map);
 
-const distanceTxt=document.getElementById("distance");
-const autonomiaTxt=document.getElementById("autonomia");
-const alertaTxt=document.getElementById("alerta");
-const audioAlerta = new Audio("alerta.mp3"); // Coloca mp3 de alerta
-
-/* Velocímetro principal */
-function drawSpeedometer(speed){
-  ctx.clearRect(0,0,300,300);
-  const cx=150,cy=150,radius=120;
-  ctx.beginPath();ctx.arc(cx,cy,radius,0,2*Math.PI);ctx.fillStyle="#0a0a0a";ctx.fill();
-  ctx.beginPath();ctx.arc(cx,cy,radius-10,Math.PI,2*Math.PI);ctx.strokeStyle="#222";ctx.lineWidth=15;ctx.stroke();
-  const maxSpeed=180;const angle=(speed/maxSpeed)*Math.PI;
-  const grad=ctx.createLinearGradient(0,0,300,0);
-  grad.addColorStop(0,"#00ffcc");grad.addColorStop(0.5,colorModo);grad.addColorStop(1,"#ff0033");
-  ctx.beginPath();ctx.arc(cx,cy,radius-10,Math.PI,Math.PI+angle);ctx.strokeStyle=grad;ctx.lineWidth=15;ctx.lineCap="round";ctx.stroke();
-  ctx.fillStyle=colorModo;ctx.font="bold 70px Arial";ctx.textAlign="center";ctx.fillText(speed.toFixed(0),cx,cy+10);
-  ctx.font="18px Arial";ctx.fillStyle="#aaa";ctx.fillText("km/h",cx,cy+40);
+function showTab(id){
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+map.invalidateSize();
 }
 
-/* Mini tacómetro */
-function drawRPM(rpm){
-  rpmCtx.clearRect(0,0,150,150);
-  const cx=75,cy=75,radius=65;
-  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius,0,2*Math.PI); rpmCtx.fillStyle="#111"; rpmCtx.fill();
-  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius-5,Math.PI,2*Math.PI); rpmCtx.strokeStyle="#222"; rpmCtx.lineWidth=10; rpmCtx.stroke();
-  const maxRPM=8000; const angle=(rpm/maxRPM)*Math.PI;
-  let color = rpm<4000 ? "lime" : rpm<6000 ? "orange" : "red";
-  rpmCtx.beginPath(); rpmCtx.arc(cx,cy,radius-5,Math.PI,Math.PI+angle); rpmCtx.strokeStyle=color; rpmCtx.lineWidth=10; rpmCtx.lineCap="round"; rpmCtx.stroke();
-  rpmCtx.fillStyle=color; rpmCtx.font="bold 18px Arial"; rpmCtx.textAlign="center"; rpmCtx.fillText(rpm.toFixed(0)+" RPM",cx,cy+5);
+function startTracking(){
+if(navigator.geolocation && !watchId){
+startTime=Date.now();
+timerInterval=setInterval(updateTime,1000);
+watchId=navigator.geolocation.watchPosition(updatePosition,errorHandler,{enableHighAccuracy:true});
+}
 }
 
-/* Actualizar RPM según velocidad */
-function actualizarRPM(){
-  rpm = Math.min(speed*50,8000); // Simulación: 1 km/h = 50 RPM
-  drawRPM(rpm);
+function pauseTracking(){
+if(watchId){
+navigator.geolocation.clearWatch(watchId);
+watchId=null;
+clearInterval(timerInterval);
+elapsed += Math.floor((Date.now()-startTime)/1000);
+}
 }
 
-/* Funciones GPS */
-function iniciar(){
-  if(watchId!==null) return;
-  if(!navigator.geolocation){alert("GPS no soportado"); return;}
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    const coords=pos.coords;
-    const currentTime=new Date().getTime();
-    if(lastPosition && coords.speed===null){
-      const dist=calcularDistancia(lastPosition,coords);
-      const dt=(currentTime-lastTime)/1000;
-      speed = dt>0 ? (dist/dt)*3600 : 0;
-      totalDistance+=dist;
-      autonomiaRestante-=dist;if(autonomiaRestante<0) autonomiaRestante=0;
-    } else {
-      speed=coords.speed?coords.speed*3.6:0;
-      if(lastPosition){
-        const dist=calcularDistancia(lastPosition,coords);
-        totalDistance+=dist;
-        autonomiaRestante-=dist;if(autonomiaRestante<0) autonomiaRestante=0;
-      }
-    }
-    lastPosition=coords; lastTime=currentTime;
-    checkVelocidad(speed);
-    actualizarUI();
-  }, err=>{alert("Activa permisos de ubicación");}, {enableHighAccuracy:true});
+function resetTracking(){
+pauseTracking();
+distance=0;elapsed=0;fuel=0;totalCost=0;lastPosition=null;
+polyline.setLatLngs([]);
+updateUI(0);updateMapUI(0);
 }
 
-function pausar(){if(watchId!==null){navigator.geolocation.clearWatch(watchId); watchId=null;}}
-function reiniciar(){totalDistance=0;lastPosition=null;lastTime=null;speed=0;autonomiaRestante=0;actualizarUI();}
-
-/* Autonomía */
-function calcularAutonomia(){
-  const litros=parseFloat(document.getElementById("litros").value);
-  consumoPorLitro=parseFloat(document.getElementById("vehiculo").value);
-  if(isNaN(litros)||litros<=0) return;
-  autonomiaRestante=litros*consumoPorLitro;
-  actualizarUI();
+function updateTime(){
+let currentElapsed=elapsed + Math.floor((Date.now()-startTime)/1000);
+document.getElementById("time").innerText=currentElapsed;
 }
 
-/* Actualizar UI */
-function actualizarUI(){
-  drawSpeedometer(speed);
-  actualizarRPM();
-  distanceTxt.innerText="Distancia: "+totalDistance.toFixed(2)+" km";
-  autonomiaTxt.innerText="Autonomía: "+autonomiaRestante.toFixed(0)+" km";
+function updatePosition(pos){
+let lat=pos.coords.latitude,lon=pos.coords.longitude;
+let speed=pos.coords.speed?pos.coords.speed*3.6:0;
+
+if(lastPosition){
+let d=getDistance(lat,lon,lastPosition.lat,lastPosition.lon);
+distance+=d;
+let fuelUsed=d/kmPerLiter;
+fuel-=fuelUsed;if(fuel<0) fuel=0;
+}
+lastPosition={lat,lon};
+polyline.addLatLng([lat,lon]);map.setView([lat,lon],16);
+
+updateUI(speed);updateMapUI(speed);
 }
 
-/* Calcular distancia GPS */
-function calcularDistancia(p1,p2){
-  const R=6371;
-  const dLat=(p2.latitude-p1.latitude)*Math.PI/180;
-  const dLon=(p2.longitude-p1.longitude)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(p1.latitude*Math.PI/180)*Math.cos(p2.latitude*Math.PI/180)*Math.sin(dLon/2)**2;
-  const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-  return R*c;
+function updateUI(speed){
+document.getElementById("speed").innerText=speed.toFixed(0)+" km/h";
+document.getElementById("distance").innerText=distance.toFixed(2);
+document.getElementById("range").innerText=(fuel*kmPerLiter).toFixed(0);
+document.getElementById("fuelLeft").innerText=fuel.toFixed(2);
+document.getElementById("totalCost").innerText=totalCost.toFixed(2);
+drawSpeedometer(speed,'mapSpeedometer');
+drawRPM(speed*40,'mapRPM');
 }
 
-/* Botones */
-document.getElementById("btnStart").addEventListener("click", iniciar);
-document.getElementById("btnPause").addEventListener("click", pausar);
-document.getElementById("btnReset").addEventListener("click", reiniciar);
+function updateMapUI(speed){updateUI(speed);}
 
-/* Modos */
-document.querySelectorAll(".modo").forEach(btn=>{
-  btn.addEventListener("click", function(){
-    document.querySelectorAll(".modo").forEach(b=>b.classList.remove("modo-activo"));
-    const modo=this.dataset.modo;
-    if(modo==="taxi") colorModo="gold";
-    if(modo==="sport") colorModo="royalblue";
-    if(modo==="drive") colorModo="red";
-    this.classList.add("modo-activo");
-    drawSpeedometer(speed);
-  });
+function addFuel(){
+let liters=parseFloat(document.getElementById("litersAdded").value)||0;
+let costPerLiter=parseFloat(document.getElementById("fuelCost").value)||0;
+fuel+=liters;totalCost+=liters*costPerLiter;
+updateUI(0);
+}
+
+document.getElementById("vehicle").addEventListener('change',function(){
+let v=this.value.split('|');kmPerLiter=parseFloat(v[0]);tankCapacity=parseFloat(v[1]);
+fuel=tankCapacity;updateUI(0);
 });
 
-/* Alertas de velocidad */
-function checkVelocidad(speed){
-  if(speed>=120){alertaTxt.innerText="🚨 SUPERASTE 120 km/h!"; audioAlerta.play();}
-  else if(speed>=100) alertaTxt.innerText="⚠️ SUPERASTE 100 km/h!";
-  else if(speed>=70) alertaTxt.innerText="⚠️ SUPERASTE 70 km/h!";
-  else if(autonomiaRestante<=50) alertaTxt.innerText="⚠️ AUTONOMÍA BAJA";
-  else alertaTxt.innerText="";
+function getDistance(lat1,lon1,lat2,lon2){
+let R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+let a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+let c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));return R*c;
 }
 
-/* Loop inicial */
-drawSpeedometer(0);
-drawRPM(0);
+function errorHandler(e){console.log(e);}
 
-/* Service Worker */
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./service-worker.js')
-    .then(reg=>console.log("SW registrado",reg))
-    .catch(err=>console.log("Error SW:",err));
+// Velocímetro semicircular
+function drawSpeedometer(speed,canvasId){
+let c=document.getElementById(canvasId),ctx=c.getContext('2d');
+ctx.clearRect(0,0,c.width,c.height);
+let cx=c.width/2,cy=c.height*0.9,radius=c.height*0.8;
+ctx.beginPath();
+ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
+ctx.strokeStyle="#222";ctx.lineWidth=10;ctx.stroke();
+let angle=Math.PI + (speed/200)*Math.PI;
+ctx.beginPath();ctx.moveTo(cx,cy);
+ctx.lineTo(cx+radius*Math.cos(angle),cy+radius*Math.sin(angle));
+ctx.strokeStyle="#fff";ctx.lineWidth=4;ctx.stroke();
+ctx.fillStyle="#fff";ctx.font="20px Arial";ctx.textAlign="center";ctx.fillText(speed.toFixed(0)+" km/h",cx,cy+30);
 }
 
-/* Actualizar RPM constantemente */
-setInterval(actualizarRPM,500);
+// Tacómetro semicircular
+function drawRPM(rpm,canvasId){
+let c=document.getElementById(canvasId),ctx=c.getContext('2d');
+ctx.clearRect(0,0,c.width,c.height);
+let cx=c.width/2,cy=c.height*0.9,radius=c.height*0.8;
+ctx.beginPath();
+ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
+ctx.strokeStyle="#222";ctx.lineWidth=8;ctx.stroke();
+let angle=Math.PI + Math.min(rpm/8000,1)*Math.PI;
+ctx.beginPath();ctx.moveTo(cx,cy);
+ctx.lineTo(cx+radius*Math.cos(angle),cy+radius*Math.sin(angle));
+ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+ctx.fillStyle="#fff";ctx.font="14px Arial";ctx.textAlign="center";ctx.fillText(rpm.toFixed(0)+" RPM",cx,cy+25);
+}
+
+if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}
+
 </script>
 </body>
 </html>
