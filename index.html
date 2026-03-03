@@ -5,14 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>V.9</title>
 <link rel="manifest" href="manifest.json">
+
 <style>
-body{margin:0;background:#000;color:#00ff88;font-family:Arial, sans-serif;text-align:center;}
+body{
+    margin:0;
+    background:#000;
+    color:#00ff88;
+    font-family:Arial, sans-serif;
+    text-align:center;
+}
 canvas{display:block;margin:0 auto;}
-#speed{font-size:90px;margin:10px 0;}
+#speed{font-size:90px;margin:10px 0;color:#b200ff;}
 #rpmValue{font-size:18px;color:#fff;margin-top:5px;}
 .smallData{font-size:16px;margin:4px 0;color:#aaa;}
-.controls button{margin:5px;padding:8px 15px;background:#00ff88;border:none;color:#000;font-weight:bold;cursor:pointer;border-radius:6px;}
-input, select{margin:5px;padding:5px;border-radius:4px;border:none;}
+.controls button{
+    margin:5px;
+    padding:8px 15px;
+    background:#00ff88;
+    border:none;
+    color:#000;
+    font-weight:bold;
+    cursor:pointer;
+    border-radius:6px;
+}
+input, select{
+    margin:5px;
+    padding:5px;
+    border-radius:4px;
+    border:none;
+}
 </style>
 </head>
 <body>
@@ -54,12 +75,20 @@ input, select{margin:5px;padding:5px;border-radius:4px;border:none;}
 </div>
 
 <script>
-let watchId=null, distance=0, fuel=0, totalCost=0, lastPosition=null, kmPerLiter=17, tankCapacity=38;
+
+let watchId=null,
+distance=0,
+fuel=0,
+totalCost=0,
+lastPosition=null,
+kmPerLiter=17,
+tankCapacity=38;
 
 const speedCanvas=document.getElementById("speedCanvas");
 const speedCtx=speedCanvas.getContext("2d");
 const rpmCanvas=document.getElementById("rpmCanvas");
 const rpmCtx=rpmCanvas.getContext("2d");
+
 const speedEl=document.getElementById("speed");
 const rpmEl=document.getElementById("rpmValue");
 const distanceEl=document.getElementById("distance");
@@ -67,9 +96,12 @@ const rangeEl=document.getElementById("range");
 const fuelEl=document.getElementById("fuelLeft");
 const costEl=document.getElementById("totalCost");
 
-document.getElementById("vehicle").addEventListener('change', function(){
-    let v=this.value.split('|'); kmPerLiter=parseFloat(v[0]); tankCapacity=parseFloat(v[1]);
-    fuel=tankCapacity; updateUI(0);
+document.getElementById("vehicle").addEventListener("change",function(){
+    let v=this.value.split("|");
+    kmPerLiter=parseFloat(v[0]);
+    tankCapacity=parseFloat(v[1]);
+    fuel=tankCapacity;
+    updateUI(0);
 });
 
 function startTracking(){
@@ -77,43 +109,67 @@ function startTracking(){
         watchId=navigator.geolocation.watchPosition(updatePosition,errorHandler,{enableHighAccuracy:true});
     }
 }
-function pauseTracking(){ if(watchId){ navigator.geolocation.clearWatch(watchId); watchId=null; } }
-function resetTracking(){ pauseTracking(); distance=0; fuel=0; totalCost=0; lastPosition=null; updateUI(0); }
+
+function pauseTracking(){
+    if(watchId){
+        navigator.geolocation.clearWatch(watchId);
+        watchId=null;
+    }
+}
+
+function resetTracking(){
+    pauseTracking();
+    distance=0;
+    fuel=0;
+    totalCost=0;
+    lastPosition=null;
+    updateUI(0);
+}
 
 function addFuel(){
     let liters=parseFloat(document.getElementById("litersAdded").value)||0;
     let cost=parseFloat(document.getElementById("fuelCost").value)||0;
-    fuel+=liters; totalCost+=liters*cost;
+    fuel+=liters;
+    totalCost+=liters*cost;
     if(fuel>tankCapacity) fuel=tankCapacity;
     updateUI(0);
 }
 
 function updateUI(speed){
-    speedEl.innerText = speed.toFixed(0)+" km/h";
-    distanceEl.innerText = distance.toFixed(2);
-    rangeEl.innerText = (fuel*kmPerLiter).toFixed(0);
-    fuelEl.innerText = fuel.toFixed(2);
-    costEl.innerText = totalCost.toFixed(2);
+    speedEl.innerText=speed.toFixed(0)+" km/h";
+    distanceEl.innerText=distance.toFixed(2);
+    rangeEl.innerText=(fuel*kmPerLiter).toFixed(0);
+    fuelEl.innerText=fuel.toFixed(2);
+    costEl.innerText=totalCost.toFixed(2);
     drawSpeedometer(speed);
     drawRPM(speed*50);
 }
 
 function updatePosition(pos){
-    let lat=pos.coords.latitude, lon=pos.coords.longitude;
+    let lat=pos.coords.latitude;
+    let lon=pos.coords.longitude;
     let speed=pos.coords.speed?pos.coords.speed*3.6:0;
+
     if(lastPosition){
         let d=getDistance(lat,lon,lastPosition.lat,lastPosition.lon);
         distance+=d;
         let fuelUsed=d/kmPerLiter;
-        fuel-=fuelUsed;if(fuel<0) fuel=0;
+        fuel-=fuelUsed;
+        if(fuel<0) fuel=0;
     }
+
     lastPosition={lat,lon};
     updateUI(speed);
 }
 
 function getDistance(lat1,lon1,lat2,lon2){
-    const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
-    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    const R=6371;
+    const dLat=(lat2-lat1)*Math.PI/180;
+    const dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+
+        Math.cos(lat1*Math.PI/180)*
+        Math.cos(lat2*Math.PI/180)*
+        Math.sin(dLon/2)**2;
     const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     return R*c;
 }
@@ -123,31 +179,64 @@ function errorHandler(e){console.log(e);}
 function drawSpeedometer(speed){
     const ctx=speedCtx;
     ctx.clearRect(0,0,speedCanvas.width,speedCanvas.height);
-    const cx=speedCanvas.width/2,cy=speedCanvas.height, radius=speedCanvas.width*0.4;
-    ctx.beginPath(); ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
-    ctx.strokeStyle="#222"; ctx.lineWidth=12; ctx.stroke();
+
+    const cx=speedCanvas.width/2;
+    const cy=speedCanvas.height;
+    const radius=speedCanvas.width*0.4;
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
+    ctx.strokeStyle="#ffffff";
+    ctx.lineWidth=12;
+    ctx.shadowColor="#ffffff";
+    ctx.shadowBlur=20;
+    ctx.stroke();
+    ctx.shadowBlur=0;
+
     let angle=Math.PI+Math.min(speed/180,1)*Math.PI;
-    ctx.beginPath(); ctx.moveTo(cx,cy);
+
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
     ctx.lineTo(cx+radius*Math.cos(angle),cy+radius*Math.sin(angle));
-    ctx.strokeStyle="#b200ff"; ctx.lineWidth=4; ctx.stroke();
+    ctx.strokeStyle="#b200ff";
+    ctx.lineWidth=4;
+    ctx.stroke();
+
     ctx.fillStyle="#b200ff";
     ctx.font="bold 50px Arial";
-    ctx.textAlign="center"; ctx.fillText(speed.toFixed(0),cx,cy-20);
-    ctx.font="18px Arial"; ctx.fillText("km/h",cx,cy+10);
+    ctx.textAlign="center";
+    ctx.fillText(speed.toFixed(0),cx,cy-20);
+    ctx.font="18px Arial";
+    ctx.fillText("km/h",cx,cy+10);
 }
 
 function drawRPM(rpm){
     const ctx=rpmCtx;
     ctx.clearRect(0,0,rpmCanvas.width,rpmCanvas.height);
-    const cx=rpmCanvas.width/2,cy=rpmCanvas.height, radius=rpmCanvas.width*0.4;
-    ctx.beginPath(); ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
-    ctx.strokeStyle="#222"; ctx.lineWidth=8; ctx.stroke();
-    let angle=Math.PI+Math.min(rpm/8000,1)*Math.PI;
-    ctx.beginPath(); ctx.moveTo(cx,cy);
-    ctx.lineTo(cx+radius*Math.cos(angle),cy+radius*Math.sin(angle));
-    ctx.strokeStyle="#b200ff"; ctx.lineWidth=3;
+
+    const cx=rpmCanvas.width/2;
+    const cy=rpmCanvas.height;
+    const radius=rpmCanvas.width*0.4;
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,radius,Math.PI,2*Math.PI);
+    ctx.strokeStyle="#ffffff";
+    ctx.lineWidth=8;
+    ctx.shadowColor="#ffffff";
+    ctx.shadowBlur=20;
     ctx.stroke();
-    rpmEl.innerText = rpm.toFixed(0)+" RPM";
+    ctx.shadowBlur=0;
+
+    let angle=Math.PI+Math.min(rpm/8000,1)*Math.PI;
+
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+radius*Math.cos(angle),cy+radius*Math.sin(angle));
+    ctx.strokeStyle="#b200ff";
+    ctx.lineWidth=3;
+    ctx.stroke();
+
+    rpmEl.innerText=rpm.toFixed(0)+" RPM";
 }
 
 updateUI(0);
@@ -155,6 +244,7 @@ updateUI(0);
 if("serviceWorker" in navigator){
     navigator.serviceWorker.register("service-worker.js");
 }
+
 </script>
 
 </body>
